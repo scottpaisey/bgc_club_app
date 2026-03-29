@@ -131,6 +131,30 @@ else:
         # st.text(f"Here we will be hosting all of our club game data for you to use and analyse however you'd like!\n\n"
         #         f"If you have any issues or want to submit a request for something new (new game system added, graph, etc.) then please contact scottpaisey in our Discord.")
         st.divider()
+        st.write(f"Most recent matches logged")
+
+        try:
+            p1_response_system_factions = supabase.table("system_factions").select("*").execute()
+            p1_df_system_factions = DataFrame(p1_response_system_factions.data)
+        except Exception as e:
+            print(e)
+
+        st.dataframe(
+            display_df[['rank', 'player_name', 'faction_name', 'sub_faction_name', 'record', 'total_score',
+                        'score_difference']],
+            hide_index=True,
+            column_config={
+                "rank": "Rank",
+                "player_name": "Player",
+                "faction_name": "Faction",
+                "sub_faction_name": "Detatchment",
+                "record": "W/D/L",
+                "total_score": "Total Score",
+                "score_difference": "+/- Margin"
+            },
+            use_container_width=True
+        )
+
 
     elif st.session_state.page == "Log Games":
         st.header("Log Games")
@@ -342,7 +366,7 @@ else:
         p1_sub = st.session_state.game_data.get("p1_sub", None)
 
         p2_id = st.session_state.game_data.get("p2_id", None)
-        p2_name = st.session_state.game_data.get("p2_first", None)
+        p2_name = st.session_state.game_data.get("p2_name", None)
         p2_fac_id = st.session_state.game_data.get("p2_fac_id", None)
         p2_all = st.session_state.game_data.get("p2_all", None)
         p2_fac = st.session_state.game_data.get("p2_fac", None)
@@ -432,20 +456,23 @@ else:
                         "mission_id": None,
                         "game_size": setup['game_size'],
                         "player_1_id": setup['p1_id'],
-                        "player_2_id": setup['p2_id'],
                         "p1_faction_id": setup['p1_fac_id'],
-                        "p2_faction_id": setup['p2_fac_id'],
                         "p1_score_01": scores['p1_pri'],
                         "p1_score_02": scores['p1_sec'],
                         "p1_score_03": scores['p1_br'],
                         "p1_score_04": 0,
                         "p1_score_05": 0,
+                        "p1_score_total": scores['p1_pri'] + scores['p1_sec'] + scores['p1_br'],
+                        "p1_score_mar": p1_total - p2_total,
+                        "player_2_id": setup['p2_id'],
+                        "player_2_name": setup['p2_id'],
+                        "p2_faction_id": setup['p2_fac_id'],
                         "p2_score_01": scores['p1_pri'],
                         "p2_score_02": scores['p2_sec'],
                         "p2_score_03": scores['p2_br'],
                         "p2_score_04": 0,
                         "p2_score_05": 0,
-                        "p1_score_mar": p1_total - p2_total,
+                        "p2_score_total": scores['p2_pri'] + scores['p2_sec'] + scores['p2_br'],
                         "p2_score_mar": p2_total - p1_total,
                         "went_first_id": setup['went_first_id'],
                         "winner_id": winner_id,
@@ -469,7 +496,7 @@ else:
                 # st.session_state.page = None  # Go back to home
                 # st.rerun()
                 st.session_state.selected_system = "40K"
-                st.session_state.page = "bgc_games"
+                st.session_state.page = None
                 st.rerun()
 
             if c2.button("❌ No, Edit Scores", use_container_width=True):
