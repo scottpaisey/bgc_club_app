@@ -322,20 +322,23 @@ else:
                 # 1. Helper to ensure we only use IDs, never names, for UUID columns
                 # This checks if p2_id exists and isn't just a guest name string
                 actual_p2_id = p2_id if (p2_id and p2_id != p2_name) else None
+                st.write(actual_p2_id)
 
                 # 2. Assign Attacker / Defender
                 if attacking_player == "You":
                     attacker_id = st.session_state.user.id
                     defender_id = actual_p2_id
+                    st.write(actual_p2_id)
                 else:
                     attacker_id = actual_p2_id
                     defender_id = st.session_state.user.id
-
+                    st.write(actual_p2_id)
                 # 3. Assign Went First
                 if went_first == "You":
                     went_first_id = st.session_state.user.id
                 else:
                     went_first_id = actual_p2_id
+                    st.write(actual_p2_id)
 
                 # Lookup IDs
                 p1_row = p1_df_system_factions[p1_df_system_factions['subfaction'] == p1_sub].iloc[0]
