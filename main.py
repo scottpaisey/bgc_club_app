@@ -85,7 +85,7 @@ def show_login_screen():
     # # local device testing link
     # redirect_uri = "http://localhost:8501/"
     # # live link
-    redirect_uri = "https://bgc-club-app.streamlit.app/"
+    redirect_uri = "https://bgc-app.streamlit.app/"
     try:
         response = supabase.auth.sign_in_with_oauth({
             "provider": "discord",
