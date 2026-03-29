@@ -18,9 +18,8 @@ from supabase import create_client, ClientOptions
 st.set_page_config(page_title="BGC Club App", page_icon="🎲")
 
 def collapse_sidebar():
-    # This clicks the 'X' or 'Chevron' button in the sidebar programmatically
+    # Targets the close 'X' or chevron button in the Streamlit sidebar
     streamlit_js_eval(js_expressions='window.parent.document.querySelector("button[kind=\'headerNoPadding\']").click()')
-
 
 @st.cache_resource
 def get_supabase_client():
@@ -289,12 +288,18 @@ else:
                     "system_id": p1_row['system_id'],
                     "p1_id": st.session_state.user.id,
                     "p1_name": p1_name,
+                    "p1_all": p1_all,
+                    "p1_fac": p1_fac,
+                    "p1_sub": p1_sub,
                     "p2_id": p2_id,
                     "p2_name": p2_custom_name,
+                    "p1_all": p1_all,
+                    "p2_fac": p2_fac,
+                    "p2_sub": p2_sub,
                     "p1_fac_id": p1_row['faction_id'],
                     "p2_fac_id": p2_row['faction_id'],
                     "attacker_id": attacker_id,
-                    "defender_id": attacker_id,
+                    "defender_id": defender_id,  # Fixed typo from your code (was attacker_id twice)
                     "went_first_id": went_first_id,
                     "game_size": game_size
                 }
@@ -354,10 +359,13 @@ else:
                     else:
                         p2_br = 0
 
+                # Use the form submit button to move to confirmation
+                submit_scores = st.form_submit_button("Review Results")
+
+                if submit_scores:
                     st.session_state.temp_scores = {
                         "p1_pri": p1_pri, "p1_sec": p1_sec, "p1_br": p1_br,
                         "p2_pri": p2_pri, "p2_sec": p2_sec, "p2_br": p2_br
-
                     }
                     st.session_state.confirm_submit = True
                     st.rerun()
