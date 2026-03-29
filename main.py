@@ -370,12 +370,6 @@ else:
         p2_fac = st.session_state.game_data.get("p2_fac", None)
         p2_sub = st.session_state.game_data.get("p2_sub", None)
 
-        # --- DEBUG MONITOR ---
-        with st.sidebar.expander("🔍 Variable Monitor", expanded=True):
-            st.write(f"**p2_id:** `{p2_id}`")
-            st.write(f"**p2_name:** `{p2_name}`")
-            st.write(f"**Type of p2_id:** `{type(p2_id).__name__}`")
-
         # 1. The Data Entry Form
         if not st.session_state.confirm_submit:
             with st.form("score_submission_form"):
@@ -449,6 +443,14 @@ else:
                         f"\n\nBattle Ready: {scores['p2_br']}")
 
             c1, c2 = st.columns(2)
+
+
+            def clean_id(val):
+                # If the value is 'krystal' or any other name string, return None
+                if isinstance(val, str) and len(val) < 30:
+                    return None
+                return val
+
             if c1.button("✅ Yes, Post Results", type="primary", use_container_width=True):
                 # --- DATABASE INSERT LOGIC HERE ---
                 # inserting game data into table
@@ -467,7 +469,7 @@ else:
                         "p1_score_05": 0,
                         "p1_score_total": scores['p1_pri'] + scores['p1_sec'] + scores['p1_br'],
                         "p1_score_mar": p1_total - p2_total,
-                        "player_2_id": setup['p2_id'],
+                        "player_2_id": clean_id(setup['p2_id']),
                         "player_2_name": setup['p2_name'],
                         "p2_faction_id": setup['p2_fac_id'],
                         "p2_score_01": scores['p2_pri'],
@@ -477,16 +479,29 @@ else:
                         "p2_score_05": 0,
                         "p2_score_total": scores['p2_pri'] + scores['p2_sec'] + scores['p2_br'],
                         "p2_score_mar": p2_total - p1_total,
-                        "went_first_id": setup['went_first_id'],
-                        "winner_id": winner_id,
-                        "loser_id": loser_id,
-                        "attacker_id": setup['attacker_id'],
-                        "defender_id": setup['defender_id'],
+                        "went_first_id": clean_id(setup['went_first_id']),
+                        "winner_id": clean_id(winner_id),
+                        "loser_id": clean_id(loser_id),
+                        "attacker_id": clean_id(setup['attacker_id']),
+                        "defender_id": clean_id(setup['defender_id']),
                         "is_draw": is_draw,
                         # "played_at": ,
                         "recorded_by":  setup['p1_id']
                         # "club_id": ,
                     }
+
+                # --- DEBUG MONITOR ---
+                with st.sidebar.expander("🔍 Variable Monitor", expanded=True):
+                    st.write(f"**p2_id:** `{p2_id}`")
+                    st.write(f"**p2_name:** `{p2_name}`")
+                    st.write(f"**Type of p2_id:** `{type(p2_id).__name__}`")
+                    st.write("### 🚨 Database Submission Debug")
+                    for key, value in match_details.items():
+                        if value == "krystal":
+                            st.error(
+                                f"FOUND THE ERROR: The column **'{key}'** is trying to send 'krystal' but it needs to be NULL (None).")
+                    st.json(match_details)  # This shows you the whole dictionary
+                # -----------------------------
 
                 supabase.table("matches").insert(match_details).execute()
 
