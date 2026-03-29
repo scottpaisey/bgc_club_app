@@ -344,7 +344,7 @@ else:
                     "p1_fac": p1_fac,
                     "p1_sub": p1_sub,
                     "p2_id": p2_id,
-                    "p2_name": p2_input,
+                    "p2_name": p2_name,
                     "p1_all": p1_all,
                     "p2_fac": p2_fac,
                     "p2_sub": p2_sub,
