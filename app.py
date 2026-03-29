@@ -79,8 +79,10 @@ def show_login_screen():
     st.title("BGC Club App Sign In")
     st.info("Please sign in with your Discord to use this app.")
 
-    redirect_uri = "http://localhost:8501/"
-
+    # # local device testing link
+    # redirect_uri = "http://localhost:8501/"
+    # # live link
+    redirect_uri = "https://bgc-club-app.streamlit.app/"
     try:
         response = supabase.auth.sign_in_with_oauth({
             "provider": "discord",
