@@ -321,7 +321,7 @@ else:
             else:
                 # 1. Helper to ensure we only use IDs, never names, for UUID columns
                 # This checks if p2_id exists and isn't just a guest name string
-                actual_p2_id = p2_id if p2_id else None
+                actual_p2_id = p2_id if (p2_id and p2_id != p2_name) else None
 
                 # 2. Assign Attacker / Defender
                 if attacking_player == "You":
