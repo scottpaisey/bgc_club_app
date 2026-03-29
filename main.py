@@ -210,16 +210,24 @@ else:
         system_id = None
 
         if p2_input:
-            # Check if the typed name matches any full_name in our DB
-            matched_user = next((p for p in db_profiles if p['username'].lower() == p2_input.lower()), None)
+            # 1. Clean the input
+            search_term = p2_input.strip().lower()
+
+            # 2. Search with extra safety checks
+            matched_user = next((
+                p for p in db_profiles
+                if (p.get('username') or "").strip().lower() == search_term
+                   or (p.get('full_name') or "").strip().lower() == search_term
+            ), None)
 
             if matched_user:
                 p2_id = matched_user['id']
-                st.success(f"✅ User found! This game will be linked to **{matched_user['full_name']}**.")
+                p2_name = matched_user.get('full_name') or matched_user.get('username')
+                st.success(f"✅ User found! This game will be linked to **{p2_name}**.")
             else:
+                p2_id = None
                 p2_custom_name = p2_input
                 st.warning("⚠️ User not found. This will be recorded as a 'Guest' game.")
-            p2_name = p2_input
 
         # 1. Allegiance Dropdown
         p2_all_df = p2_df_system_factions[p2_df_system_factions['short_name'] == '40K']
