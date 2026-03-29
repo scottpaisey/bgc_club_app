@@ -191,7 +191,7 @@ else:
         except Exception as e:
             print(e)
         st.subheader("Game Details")
-        game_size = st.selectbox('Game Size', ['Strike Force', 'Incursion', 'Combat Partol'], index=None,
+        game_size = st.selectbox('Game Size', ['Strike Force', 'Incursion', 'Other'], index=None,
                                  placeholder="Choose...", key="game_s")
         # mission_pack = st.selectbox(st.selectbox('Mission Pack',['Strike Force (2k)', 'Incursion (1k)', 'Combat Partol'], index=None, placeholder="Choose...")
         st.write("**Your Details**")
