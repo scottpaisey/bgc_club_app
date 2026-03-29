@@ -141,10 +141,19 @@ else:
 
         if res.data:
             recent_df = DataFrame(res.data)
-
             st.subheader("Latest 10 Battle Reports")
             st.dataframe(
                 recent_df,
+                column_order=(
+                    "game_date",
+                    "system_name",
+                    "display_p1_name",
+                    "p1_faction",
+                    "p1_score_total",
+                    "display_p2_name",
+                    "p2_faction",
+                    "p2_score_total"
+                ),
                 column_config={
                     "game_date": "Date",
                     "system_name": "System",
