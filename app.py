@@ -18,8 +18,8 @@ from supabase import create_client, ClientOptions
 @st.cache_resource
 def get_supabase_client():
     load_dotenv()
-    url = os.getenv("SUPABASE_URL_2")
-    key = os.getenv("SUPABASE_KEY_2")
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_KEY")
     # This forces EVERY auth action to use PKCE (?code=) instead of Implicit (#hash)
     return create_client(url, key, options=ClientOptions(flow_type="pkce"))
 
