@@ -161,6 +161,8 @@ else:
             p1_df_system_factions = DataFrame(p1_response_system_factions.data)
             p2_response_system_factions = supabase.table("system_factions").select("*").execute()
             p2_df_system_factions = DataFrame(p2_response_system_factions.data)
+            p2_response_account = supabase.table("profiles").select("*").execute()
+            p2_df_account = DataFrame(p2_response_account.data)
         except Exception as e:
             print(e)
         st.subheader("Game Details")
@@ -210,24 +212,28 @@ else:
         system_id = None
 
         if p2_input:
-            # 1. Clean the input
+            # 1. Clean the input and prepare the search
             search_term = p2_input.strip().lower()
 
-            # 2. Search with extra safety checks
-            matched_user = next((
-                p for p in db_profiles
-                if (p.get('username') or "").strip().lower() == search_term
-                   or (p.get('full_name') or "").strip().lower() == search_term
-            ), None)
+            # 2. Filter the DataFrame for a match (checking both username and full_name for safety)
+            # We use .str.lower() so it isn't case-sensitive
+            mask = (p2_df_account['username'].str.lower() == search_term) | \
+                   (p2_df_account['full_name'].str.lower() == search_term)
 
-            if matched_user:
-                p2_id = matched_user['id']
-                p2_name = matched_user.get('full_name') or matched_user.get('username')
-                st.success(f"✅ User found! This game will be linked to **{p2_name}**.")
+            matched_rows = p2_df_account[mask]
+
+            if not matched_rows.empty:
+                # Get the first match found
+                user_row = matched_rows.iloc[0]
+                p2_id = user_row['id']
+                # Use full_name if they have one, otherwise username
+                p2_name = user_row['full_name'] if user_row['full_name'] else user_row['username']
+
+                st.success(f"✅ User found! Linked to **{p2_name}**.")
             else:
                 p2_id = None
                 p2_custom_name = p2_input
-                st.warning("⚠️ User not found. This will be recorded as a 'Guest' game.")
+                st.warning("⚠️ User not found. Recording as 'Guest'.")
 
         # 1. Allegiance Dropdown
         p2_all_df = p2_df_system_factions[p2_df_system_factions['short_name'] == '40K']
