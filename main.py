@@ -348,8 +348,8 @@ else:
                     "p1_all": p1_all,
                     "p2_fac": p2_fac,
                     "p2_sub": p2_sub,
-                    "p1_fac_id": p1_row['id'],
-                    "p2_fac_id": p2_row['id'],
+                    "p1_fac_id": p1_row['faction_id'],
+                    "p2_fac_id": p2_row['faction_id'],
                     "attacker_id": attacker_id,
                     "defender_id": defender_id,  # Fixed typo from your code (was attacker_id twice)
                     "went_first_id": went_first_id,
