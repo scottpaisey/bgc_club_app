@@ -134,13 +134,13 @@ else:
         st.write(f"Most recent matches logged")
 
         try:
-            p1_response_system_factions = supabase.table("matches").select("*").execute()
-            p1_df_system_factions = DataFrame(p1_response_system_factions.data)
+            response_matches = supabase.table("matches").select("*").execute()
+            df_matches = DataFrame(response_matches.data)
         except Exception as e:
             print(e)
 
         st.dataframe(
-            p1_df_system_factions[['allegiance','faction','subfaction']],
+            df_matches[['allegiance','faction','subfaction']],
             hide_index=True,
             use_container_width=True
         )
@@ -160,7 +160,7 @@ else:
         #     },
         #     use_container_width=True
         # )
-        # 
+        #
 
     elif st.session_state.page == "Log Games":
         st.header("Log Games")
