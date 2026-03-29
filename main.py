@@ -83,7 +83,6 @@ if "user" not in st.session_state:
     if user_resp and user_resp.user:
         st.session_state.user = user_resp.user
 
-
 # 4. LOGIN FUNCTION
 def show_login_screen():
     st.title("BGC Club App Sign In")
@@ -112,7 +111,7 @@ if "user" not in st.session_state:
 else:
     # --- EVERYTHING BELOW RUNS ONLY WHEN LOGGED IN ---
     st.sidebar.success(f"Logged in as {st.session_state.user.user_metadata.get('full_name')}")
-    st.sidebar.code(f"DEBUG: Current Page = {st.session_state.page}")
+    # st.sidebar.code(f"DEBUG: Current Page = {st.session_state.page}")
     if st.sidebar.button("Home"):
         st.session_state.page = None
         collapse_sidebar()
@@ -205,7 +204,7 @@ else:
         # mission_pack = st.selectbox(st.selectbox('Mission Pack',['Strike Force (2k)', 'Incursion (1k)', 'Combat Partol'], index=None, placeholder="Choose...")
         st.write("**Your Details**")
         # Extract the name from Discord metadata
-        p1_name = st.text_input("Your Discord Name*", value=discord_name, key="p1_username")
+        p1_name = st.text_input("Your Discord Name*", value=discord_name, key="p1_username", disabled=True)
         # p1_last = st.text_input("Surname", key="p1_l")
         # p1_known = st.text_input("Known As", key="p1_k")
         # 1. Allegiance Dropdown
@@ -237,7 +236,7 @@ else:
         profiles_resp = supabase.table("profiles").select("id, full_name").execute()
         db_profiles = profiles_resp.data  # List of dicts: {'id': '...', 'full_name': '...'}
         # 2. Text Input for Opponent
-        p2_input = st.text_input("Opponent Name*", key="p2_username",
+        p2_input = st.text_input("Opponent Discord Name*", key="p2_username",
                                  help="Type their Discord User Name to link their profile")
         # 3. Validation Step
         p2_id = None
@@ -500,16 +499,16 @@ else:
                     }
 
                 # --- DEBUG MONITOR ---
-                with st.sidebar.expander("🔍 Variable Monitor", expanded=True):
-                    st.write(f"**p2_id:** `{p2_id}`")
-                    st.write(f"**p2_name:** `{p2_name}`")
-                    st.write(f"**Type of p2_id:** `{type(p2_id).__name__}`")
-                    st.write("### 🚨 Database Submission Debug")
-                    for key, value in match_details.items():
-                        if value == "krystal":
-                            st.error(
-                                f"FOUND THE ERROR: The column **'{key}'** is trying to send 'krystal' but it needs to be NULL (None).")
-                    st.json(match_details)  # This shows you the whole dictionary
+                #with st.sidebar.expander("🔍 Variable Monitor", expanded=True):
+                    #st.write(f"**p2_id:** `{p2_id}`")
+                    #st.write(f"**p2_name:** `{p2_name}`")
+                    #st.write(f"**Type of p2_id:** `{type(p2_id).__name__}`")
+                    #st.write("### 🚨 Database Submission Debug")
+                    #for key, value in match_details.items():
+                        #if value == "krystal":
+                            #st.error(
+                                #f"FOUND THE ERROR: The column **'{key}'** is trying to send 'krystal' but it needs to be NULL (None).")
+                    #st.json(match_details)  # This shows you the whole dictionary
                 # -----------------------------
 
                 supabase.table("matches").insert(match_details).execute()
