@@ -133,34 +133,41 @@ else:
         st.divider()
         st.write(f"Most recent matches logged")
 
-        try:
-            response_matches = supabase.table("matches").select("*").execute()
-            df_matches = DataFrame(response_matches.data)
-        except Exception as e:
-            print(e)
 
-        st.dataframe(
-            df_matches[['allegiance','faction','subfaction']],
-            hide_index=True,
-            use_container_width=True
-        )
+        # # # Recent Matches on Home Screen
 
-        # st.dataframe(
-        #     display_df[['rank', 'player_name', 'faction_name', 'sub_faction_name', 'record', 'total_score',
-        #                 'score_difference']],
-        #     hide_index=True,
-        #     column_config={
-        #         "rank": "Rank",
-        #         "player_name": "Player",
-        #         "faction_name": "Faction",
-        #         "sub_faction_name": "Detatchment",
-        #         "record": "W/D/L",
-        #         "total_score": "Total Score",
-        #         "score_difference": "+/- Margin"
-        #     },
-        #     use_container_width=True
-        # )
-        #
+        # 1. Query the View
+        view_resp = supabase.table("match_results") \
+            .select("*") \
+            .order("game_date", desc=True) \
+            .limit(10) \
+            .execute()
+
+        # 2. Display the Result
+        if view_resp.data:
+            recent_df = DataFrame(view_resp.data)
+
+            st.subheader("Latest 10 Battle Reports")
+            st.dataframe(
+                recent_df,
+                column_config={
+                    "system_name": "System",
+                    "display_p1_name": "Player 1",
+                    "p1_faction": "P1 Faction",
+                    "p1_score_total": "P1 Total",
+                    "display_p2_name": "Player 2",
+                    "p2_faction": "P2 Faction",
+                    "p2_score_total": "P2 Total",
+                    "game_date": "Game Date"
+                },
+                use_container_width=True,
+                hide_index=True
+            )
+
+        else:
+            st.info("No match history found.")
+
+
 
     elif st.session_state.page == "Log Games":
         st.header("Log Games")
@@ -239,30 +246,27 @@ else:
         p2_name = None
         p2_id = None
         p2_custom_name = None
-        system_id = None
 
         if p2_input:
-            # 1. Clean the input and prepare the search
             search_term = p2_input.strip().lower()
 
-            # 2. Filter the DataFrame for a match (checking both username and full_name for safety)
-            # We use .str.lower() so it isn't case-sensitive
-            mask = (p2_df_account['username'].str.lower() == search_term) | \
-                   (p2_df_account['full_name'].str.lower() == search_term)
+            # Use fillna to prevent crashes on nulls in DB
+            mask = (p2_df_account['username'].fillna('').str.lower() == search_term) | \
+                   (p2_df_account['full_name'].fillna('').str.lower() == search_term)
 
             matched_rows = p2_df_account[mask]
 
             if not matched_rows.empty:
-                # Get the first match found
                 user_row = matched_rows.iloc[0]
                 p2_id = user_row['id']
-                # Use full_name if they have one, otherwise username
+                # Assign the found name to p2_name
                 p2_name = user_row['full_name'] if user_row['full_name'] else user_row['username']
-
                 st.success(f"✅ User found! Linked to **{p2_name}**.")
             else:
                 p2_id = None
                 p2_custom_name = p2_input
+                # KEY FIX: Assign the input to p2_name so the "mandatory" check passes
+                p2_name = p2_input
                 st.warning("⚠️ User not found. Recording as 'Guest'.")
 
         # 1. Allegiance Dropdown
@@ -336,7 +340,7 @@ else:
                     "p1_fac": p1_fac,
                     "p1_sub": p1_sub,
                     "p2_id": p2_id,
-                    "p2_name": p2_custom_name,
+                    "p2_name": p2_name,
                     "p1_all": p1_all,
                     "p2_fac": p2_fac,
                     "p2_sub": p2_sub,
