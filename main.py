@@ -176,7 +176,7 @@ else:
     elif st.session_state.page == "Log Games":
         st.header("Log Games")
         st.divider()
-        st.subheader("Step 1: Please Choose the Systme you are logging")
+        st.subheader("Step 1: Please Choose the System you are logging")
         if st.button("Warhammer 40,000"):
             st.session_state.page = "40k"
             st.rerun()
