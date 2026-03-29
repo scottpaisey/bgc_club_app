@@ -136,36 +136,31 @@ else:
 
         # # # Recent Matches on Home Screen
 
-        # 1. Query the View
-        view_resp = supabase.table("match_results") \
-            .select("*") \
-            .order("game_date", desc=True) \
-            .limit(10) \
-            .execute()
+        # Fetch from your new view
+        res = supabase.table("match_results").select("*").order("game_date", desc=True).limit(10).execute()
 
-        # 2. Display the Result
-        if view_resp.data:
-            recent_df = DataFrame(view_resp.data)
+        if res.data:
+            recent_df = DataFrame(res.data)
 
             st.subheader("Latest 10 Battle Reports")
             st.dataframe(
                 recent_df,
                 column_config={
+                    "game_date": "Date",
                     "system_name": "System",
                     "display_p1_name": "Player 1",
                     "p1_faction": "P1 Faction",
-                    "p1_score_total": "P1 Total",
+                    "p1_score_total": "P1 Score",
                     "display_p2_name": "Player 2",
                     "p2_faction": "P2 Faction",
-                    "p2_score_total": "P2 Total",
-                    "game_date": "Game Date"
+                    "p2_score_total": "P2 Opponent Score"
                 },
                 use_container_width=True,
                 hide_index=True
             )
-
         else:
-            st.info("No match history found.")
+            st.info("No match history found yet. Go log some games!")
+
 
 
 
