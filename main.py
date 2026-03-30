@@ -68,11 +68,11 @@ if "code" in st.query_params:
     except Exception as e:
         st.error(f"Login Sync Failed: {e}")
 
-# 3. PERSISTENT USER SYNC
-if "user" not in st.session_state:
-    user_resp = supabase.auth.get_user()
-    if user_resp and user_resp.user:
-        st.session_state.user = user_resp.user
+# #3. PERSISTENT USER SYNC
+#if "user" not in st.session_state:
+    #user_resp = supabase.auth.get_user()
+    #if user_resp and user_resp.user:
+        #st.session_state.user = user_resp.user
 
 
 # 4. LOGIN FUNCTION
@@ -124,10 +124,18 @@ else:
         st.session_state.page = "Personal Stats"
         collapse_sidebar()
         st.rerun()
+    #if st.sidebar.button("Log Out"):
+        #supabase.auth.sign_out()
+        #del st.session_state.user
+        #st.rerun()
     if st.sidebar.button("Log Out"):
         supabase.auth.sign_out()
-        del st.session_state.user
+        # Clear session state completely to be safe
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
         st.rerun()
+
+        
 
     if st.session_state.page is None:
         st.header("BGC Club App")
