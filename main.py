@@ -532,9 +532,24 @@ else:
     elif st.session_state.page == "Graphs":
         st.header("Graphs")
         st.divider()
-        # Data here
-
         
+        # 2. Fetch matches where the user is P1 OR P2
+        # We use the .or_() filter on the view's column names
+        res = supabase.table("v_system_faction_data") \
+            .select("*") \
+            .execute()
+            # .order("game_date", desc=True) \
+            # .limit(10) \
+            
+        if res.data:
+            recent_df = DataFrame(res.data)
+            st.subheader("Faction Win Rates")
+            st.dataframe(
+                recent_df,
+                use_container_width=True,
+                hide_index=True
+            )
+
 
     elif st.session_state.page == "Personal Stats":
         st.header("Personal Stats")
