@@ -3,7 +3,8 @@ import streamlit as st
 from supabase import create_client, Client
 from streamlit_js_eval import streamlit_js_eval
 from dotenv import load_dotenv
-from pandas import DataFrame
+# from pandas import DataFrame
+import pandas as pd
 import plotly.express as px
 import time
 import os
@@ -148,7 +149,7 @@ else:
         # Fetch from your new view
         res = supabase.table("match_results").select("*").order("game_date", desc=True).limit(10).execute()
         if res.data:
-            recent_df = DataFrame(res.data)
+            recent_df = pd.Dataframe(res.data)
             st.subheader("Latest 10 Battle Reports")
             st.dataframe(
                 recent_df,
@@ -195,11 +196,11 @@ else:
 
         try:
             p1_response_system_factions = supabase.table("system_factions").select("*").execute()
-            p1_df_system_factions = DataFrame(p1_response_system_factions.data)
+            p1_df_system_factions = pd.DataFrame(p1_response_system_factions.data)
             p2_response_system_factions = supabase.table("system_factions").select("*").execute()
-            p2_df_system_factions = DataFrame(p2_response_system_factions.data)
+            p2_df_system_factions = pd.DataFrame(p2_response_system_factions.data)
             p2_response_account = supabase.table("profiles").select("*").execute()
-            p2_df_account = DataFrame(p2_response_account.data)
+            p2_df_account = pd.DataFrame(p2_response_account.data)
         except Exception as e:
             print(e)
         st.subheader("Game Details")
