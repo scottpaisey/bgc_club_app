@@ -722,6 +722,53 @@ else:
                 st.divider()
                 show_allegiance_points_pie(event_df)
 
+                def show_event_awards(df, leaderboard):
+                    st.subheader("🎖️ The Sector Awards")
+                    
+                    # --- 1. Warmaster & Penitent (Standings) ---
+                    warmaster = leaderboard.iloc[0]['player']
+                    penitent = leaderboard.iloc[-1]['player']
+                    
+                    # --- 2. Master of the Tactica (Avg Score) ---
+                    # We calculate average from our leaderboard data
+                    leaderboard['Avg_Score'] = (leaderboard['Total_Points'] / leaderboard['Played']).round(1)
+                    top_tactician = leaderboard.sort_values('Avg_Score', ascending=False).iloc[0]
+                    
+                    # --- 3. Exterminatus Protocol (Max Margin) ---
+                    # We look at the raw match data for the biggest p1_score_mar or p2_score_mar
+                    max_mar_row = df.loc[df[['p1_score_mar', 'p2_score_mar']].max(axis=1).idxmax()]
+                    if max_mar_row['p1_score_mar'] > max_mar_row['p2_score_mar']:
+                        exterminatus_player = max_mar_row['display_p1_name']
+                        max_mar = max_mar_row['p1_score_mar']
+                    else:
+                        exterminatus_player = max_mar_row['display_p2_name']
+                        max_mar = max_mar_row['p2_score_mar']
+                
+                    # Display Top Row
+                    col1, col2, col3 = st.columns(3)
+                    col1.metric("⚔️ Warmaster", warmaster, "1st Place")
+                    col2.metric("📜 Master of Tactica", top_tactician['player'], f"{top_tactician['Avg_Score']} Avg")
+                    col3.metric("💥 Exterminatus", exterminatus_player, f"+{max_mar} Margin")
+                    
+                    st.divider()
+                
+                    # --- 4. Special Narrative Awards ---
+                    st.write("### 🕵️ Intelligence Reports")
+                    c1, c2 = st.columns(2)
+                
+                    # Tzeentch’s Plaything: High VP, Low Wins
+                    # Filter for people with < 2 wins but high total points
+                    plaything = leaderboard[leaderboard['Wins'] < 2].sort_values('Total_Points', ascending=False)
+                    if not plaything.empty:
+                        c1.info(f"**Tzeentch’s Plaything:** {plaything.iloc[0]['player']} (High VP, Low Wins)")
+                
+                    # The Eternal Martyr: Most losses, High average
+                    martyr = leaderboard.sort_values(['Wins', 'Avg_Score'], ascending=[True, False])
+                    c2.info(f"**The Eternal Martyr:** {martyr.iloc[0]['player']} (Highest Avg in Defeat)")
+
+                show_event_awards(event_df, show_leaderboard(event_df))
+
+
 
 
 
