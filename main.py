@@ -662,6 +662,62 @@ else:
                 use_container_width=True,
                 hide_index=True
             )
+    
+        def show_faction_win_rates():
+            st.subheader("📊 Faction Win Rates")
+        
+            # 1. Fetch data from your 'match_results' view
+            res = supabase.table("match_results").select("*").execute()
+            
+            if not res.data:
+                st.info("No matches found to calculate win rates.")
+                return
+        
+            df = pd.DataFrame(res.data)
+        
+            # 2. Unpivot: Create a 'long' format so every row is one faction's performance
+            p1_data = df[['p1_faction', 'p1_score_total', 'p2_score_total']].copy()
+            p1_data.columns = ['faction', 'score', 'opp_score']
+            
+            p2_data = df[['p2_faction', 'p2_score_total', 'p1_score_total']].copy()
+            p2_data.columns = ['faction', 'score', 'opp_score']
+            
+            combined = pd.concat([p1_data, p2_data])
+        
+            # 3. Calculate Win Rate per Faction
+            combined['is_win'] = combined['score'] > combined['opp_score']
+            
+            faction_stats = combined.groupby('faction').agg(
+                Total_Games=('faction', 'count'),
+                Wins=('is_win', 'sum')
+            ).reset_index()
+        
+            faction_stats['Win_Rate'] = (faction_stats['Wins'] / faction_stats['Total_Games'] * 100).round(1)
+        
+            # 4. Filter for factions with at least 1 game and sort by Win Rate
+            faction_stats = faction_stats[faction_stats['Total_Games'] > 0].sort_values(by='Win_Rate', ascending=False)
+        
+            # 5. Create Plotly Bar Chart
+            fig = px.bar(
+                faction_stats,
+                x='faction',
+                y='Win_Rate',
+                text='Win_Rate',
+                labels={'Win_Rate': 'Win Rate (%)', 'faction': 'Faction'},
+                color='Win_Rate',
+                color_continuous_scale='RdYlGn', # Red-Yellow-Green scale
+                height=500
+            )
+        
+            # Clean up layout
+            fig.update_traces(texttemplate='%{text}%', textposition='outside')
+            fig.update_layout(yaxis_range=[0, 100], showlegend=False)
+        
+            # 6. Display in Streamlit
+            st.plotly_chart(fig, use_container_width=True)
+        
+        # Call the function in your Graphs page
+        show_faction_win_rates()
 
 
         else:
