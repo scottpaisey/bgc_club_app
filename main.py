@@ -104,7 +104,7 @@ if "user" not in st.session_state:
 else:
     # --- EVERYTHING BELOW RUNS ONLY WHEN LOGGED IN ---
     st.sidebar.success(f"Logged in as {st.session_state.user.user_metadata.get('full_name')}")
-    st.sidebar.code(f"DEBUG: Current Page = {st.session_state.page}")
+    # st.sidebar.code(f"DEBUG: Current Page = {st.session_state.page}")
     if st.sidebar.button("Home"):
         st.session_state.page = None
         collapse_sidebar()
