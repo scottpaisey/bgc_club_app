@@ -638,6 +638,43 @@ else:
                 st.divider()
                 show_faction_win_rates(event_df)
 
+                                # --- REPORT 3: FACTION TURN OUT (PIE CHART) ---
+                def show_faction_turnout(df):
+                    st.subheader(f"🍕 {selected_event} Faction Turnout")
+                    
+                    # Unpivot Player 1 and Player 2 factions
+                    p1_factions = df[['p1_faction']].copy()
+                    p1_factions.columns = ['faction']
+                    
+                    p2_factions = df[['p2_faction']].copy()
+                    p2_factions.columns = ['faction']
+                    
+                    combined = pd.concat([p1_factions, p2_factions])
+                    
+                    # Count occurrences of each faction
+                    turnout_stats = combined['faction'].value_counts().reset_index()
+                    turnout_stats.columns = ['Faction', 'Count']
+                    
+                    # Create Pie Chart
+                    fig = px.pie(
+                        turnout_stats, 
+                        values='Count', 
+                        names='Faction', 
+                        title=f"Faction Distribution for {selected_event}",
+                        hole=0.4, # Makes it a Donut Chart (optional)
+                        color_discrete_sequence=px.colors.qualitative.Pastel
+                    )
+                    
+                    # Update layout to show labels and percentages
+                    fig.update_traces(textinfo='percent+label')
+                    
+                    st.plotly_chart(fig, use_container_width=True)
+
+                # Run the new report
+                st.divider()
+                show_faction_turnout(event_df)
+
+
 
     elif st.session_state.page == "Graphs":
         st.header("Graphs")
