@@ -537,6 +537,64 @@ else:
         st.divider()
         # Data here
 
+        def show_leaderboard():
+            st.header("🏆 Player Rankings")
+
+            # 1. Fetch data from your Match Results view (the one with names and scores)
+            # We fetch more than 10 because we need all records to calculate true ranks
+            res = supabase.table("match_results").select("*").execute()
+
+            if not res.data:
+                st.info("No matches logged yet to calculate rankings.")
+                return
+
+            df = DataFrame.DataFrame(res.data)
+
+            # 2. Process Player 1 and Player 2 into a single list of performances
+            # We need to know: Name, Was it a Win?, What was the Score?
+            p1_data = df[['display_p1_name', 'p1_score_total', 'display_p1_name']].copy()
+            p1_data.columns = ['player', 'score', 'opponent']
+            # Check if they won (this assumes your view has a 'winner_name' or similar)
+            # If not, we compare scores:
+            p1_data['is_win'] = df['p1_score_total'] > df['p2_score_total']
+
+            p2_data = df[['display_p2_name', 'p2_score_total', 'display_p1_name']].copy()
+            p2_data.columns = ['player', 'score', 'opponent']
+            p2_data['is_win'] = df['p2_score_total'] > df['p1_score_total']
+
+            # Combine them
+            combined = DataFrame.concat([p1_data, p2_data])
+
+            # 3. Aggregate by Player
+            leaderboard = combined.groupby('player').agg(
+                Played=('player', 'count'),
+                Wins=('is_win', 'sum'),
+                Total_Points=('score', 'sum')
+            ).reset_index()
+
+            # 4. Calculate Rank (Sort by Wins DESC, then Total_Points DESC)
+            leaderboard = leaderboard.sort_values(by=['Wins', 'Total_Points'], ascending=False)
+
+            # Add a visual Rank column
+            leaderboard.insert(0, 'Rank', range(1, len(leaderboard) + 1))
+
+            # 5. Display with Streamlit Dataframe
+            st.dataframe(
+                leaderboard,
+                column_config={
+                    "Rank": st.column_config.NumberColumn("Rank", format="#%d"),
+                    "player": "Player Name",
+                    "Played": "Games",
+                    "Wins": "Wins ✅",
+                    "Total_Points": st.column_config.NumberColumn("Total Points", format="%d pts"),
+                },
+                hide_index=True,
+                use_container_width=True
+            )
+
+        # Run the function
+        show_leaderboard()
+
     elif st.session_state.page == "Graphs":
         st.header("Graphs")
         st.divider()
