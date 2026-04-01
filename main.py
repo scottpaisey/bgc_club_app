@@ -674,6 +674,42 @@ else:
                 st.divider()
                 show_faction_turnout(event_df)
 
+                    # --- REPORT 4: POINTS PER ALLEGIANCE (PIE CHART) ---
+                def show_allegiance_points_pie(df):
+                    st.subheader(f"🍰 {selected_event} Points per Allegiance")
+                    
+                    # Unpivot: Get scores and allegiances for both Player 1 and Player 2
+                    p1_data = df[['p1_allegiance', 'p1_score_total']].copy()
+                    p1_data.columns = ['allegiance', 'score']
+                    
+                    p2_data = df[['p2_allegiance', 'p2_score_total']].copy()
+                    p2_data.columns = ['allegiance', 'score']
+                    
+                    combined = pd.concat([p1_data, p2_data])
+                    
+                    # Group by allegiance and sum the scores
+                    agg_data = combined.groupby('allegiance')['score'].sum().reset_index()
+                    
+                    # Create the Pie/Donut Chart
+                    fig = px.pie(
+                        agg_data,
+                        values='score',
+                        names='allegiance',
+                        title=f"Total Points Distribution for {selected_event}",
+                        hole=0.4,
+                        color_discrete_sequence=px.colors.qualitative.Safe
+                    )
+                    
+                    # Show percentage and label on the slices
+                    fig.update_traces(textinfo='percent+label')
+                    
+                    st.plotly_chart(fig, use_container_width=True)
+
+                # Run the new report
+                st.divider()
+                show_allegiance_points_pie(event_df)
+
+
 
 
     elif st.session_state.page == "Graphs":
