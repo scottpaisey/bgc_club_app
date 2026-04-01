@@ -689,7 +689,7 @@ else:
             # .limit(10) \
             
         if res.data:
-            recent_df = DataFrame(res.data)
+            recent_df = pd.DataFrame(res.data)
             st.subheader("Faction Win Rates")
             st.dataframe(
                 recent_df,
@@ -715,7 +715,7 @@ else:
             .execute()
 
         if res.data:
-            recent_df = DataFrame(res.data)
+            recent_df = pd.DataFrame(res.data)
             st.subheader("Your Latest 10 Battle Reports")
             st.dataframe(
                 recent_df,
