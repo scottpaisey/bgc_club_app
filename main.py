@@ -655,40 +655,42 @@ else:
             st.plotly_chart(fig, use_container_width=True)
 
             # --- STEP 2: FETCH & FILTER DATA ---
+            # Ensure this block is NOT indented inside your function definitions!
             res = supabase.table("match_results").select("*").eq("event_name", selected_event).execute()
             
             if res.data:
                 raw_df = pd.DataFrame(res.data)
                 
-                # A. PRE-FILTER: Always exclude 'Dropped' players from everything
-                # (Matches only count if both players were Checked In)
+                # A. PRE-FILTER: Keep the match if EITHER player is Checked In.
+                # This ensures Byes and matches against Dropped players aren't deleted from the record.
                 active_df = raw_df[
-                    (raw_df['p1_status'] == 'Checked In') & 
+                    (raw_df['p1_status'] == 'Checked In') | 
                     (raw_df['p2_status'] == 'Checked In')
                 ].copy()
     
-                # B. RANKING DATA: Includes 'Not Played' for total points/games
+                # B. RANKING DATA: Includes 'Not Played' (100pt Byes) for total points/games
                 ranking_event_df = active_df.copy()
     
-                # C. AWARDS & CHART DATA: Excludes 'Not Played' to prevent skewed averages/margins
+                # C. AWARDS & CHART DATA: Excludes 'Not Played' for clean win rates/margins
                 awards_event_df = active_df[active_df['status'] != 'Not Played'].copy()
     
                 if ranking_event_df.empty:
-                    st.warning("No valid match data found.")
+                    st.warning("No valid match data found for this event.")
                 else:
                     # --- STEP 3: RUN REPORTS IN ORDER ---
                     
-                    # 1. Leaderboard: Use the 'Ranking' DF (Includes Not Played 100pts)
+                    # 1. Leaderboard (Includes 'Not Played' scores for total games)
+                    # This function handles individual 'Dropped' status internally
                     ranking_data = show_leaderboard(ranking_event_df)
                     
                     st.divider()
                     
-                    # 2. Awards: Use the 'Awards' DF (Excludes Not Played/Byes)
+                    # 2. Awards (Excludes 'Not Played' for accurate margin/avg score)
                     show_event_awards(awards_event_df, ranking_data)
     
                     st.divider()
                     
-                    # 3. Charts: Use the 'Awards' DF (Excludes Not Played for clean Win Rates)
+                    # 3. Charts (Excludes 'Not Played' for clean Faction Meta analysis)
                     show_faction_win_rates(awards_event_df)
                     
                     st.divider()
