@@ -692,7 +692,8 @@ else:
                     (raw_df['p2_status'] == 'Checked In')
                 ].copy()
     
-        show_leaderboard(df)
+        show_leaderboard(raw_df)
+        show_leaderboard(event_df)
     
 
     elif st.session_state.page == "Graphs":
