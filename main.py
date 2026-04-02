@@ -600,66 +600,139 @@ else:
             
             st.divider()
         
-            # --- NEW: SECTOR COMMANDERS (Top Performer per Allegiance) ---
+            # # --- NEW: SECTOR COMMANDERS (Top Performer per Allegiance) ---
+            # st.write("### 🛡️ Sector Commanders")
+            # # We unpivot to find which player performed best for each allegiance
+            # p1 = df[['display_p1_name', 'p1_allegiance', 'p1_score_total']].rename(columns={'display_p1_name':'player', 'p1_allegiance':'allg', 'p1_score_total':'score'})
+            # p2 = df[['display_p2_name', 'p2_allegiance', 'p2_score_total']].rename(columns={'display_p2_name':'player', 'p2_allegiance':'allg', 'p2_score_total':'score'})
+            # all_perf = pd.concat([p1, p2])
+            
+            # # Group by Allegiance and Player to find the best in each category
+            # commander_stats = all_perf.groupby(['allg', 'player']).agg(Total_VP=('score', 'sum'), Games=('score', 'count')).reset_index()
+            
+            # # Create columns for the top 3 (or however many allegiances you have)
+            # allg_list = sorted(all_perf['allg'].unique())
+            # cols = st.columns(len(allg_list))
+            
+            # for i, allg in enumerate(allg_list):
+            #     # Find the player with highest VP in this allegiance
+            #     top_in_allg = commander_stats[commander_stats['allg'] == allg].sort_values('Total_VP', ascending=False).iloc[0]
+            #     cols[i].metric(f"🚩 {allg}", top_in_allg['player'], f"{top_in_allg['Total_VP']} VP")
+        
+            # st.divider()
+        
+            # # --- NEW: COMBAT EFFICIENCY (Averages) ---
+            # st.write("### 🎯 Combat Efficiency")
+            # avg_win_score = df[['p1_score_total', 'p2_score_total']].max(axis=1).mean().round(1)
+            # # Filter out scores of 0 for the losing average to keep it realistic
+            # losing_scores = df[['p1_score_total', 'p2_score_total']].min(axis=1)
+            # avg_loss_score = losing_scores[losing_scores > 0].mean().round(1)
+            # avg_diff = (df['p1_score_total'] - df['p2_score_total']).abs().mean().round(1)
+        
+            # c1, c2, c3 = st.columns(3)
+            # c1.metric("Avg Winning Score", f"{avg_win_score}")
+            # c2.metric("Avg Losing Score", f"{avg_loss_score}")
+            # c3.metric("Avg Score Diff", f"{avg_diff}")
+        
+            # st.divider()
+        
+            # # --- NARRATIVE AWARDS ---
+            # st.write("### 🕵️ Intelligence Reports")
+            # n1, n2, n3 = st.columns(3)
+        
+            # # 1. Tzeentch’s Plaything: High VP, Low Wins
+            # plaything = leaderboard[leaderboard['Wins'] < 2].sort_values('Total_Points', ascending=False)
+            # if not plaything.empty:
+            #     n1.info(f"**Tzeentch’s Plaything**\n\n**{plaything.iloc[0]['player']}** ({plaything.iloc[0]['Total_Points']} VP)")
+        
+            # # 2. The Eternal Martyr: Most losses, High average
+            # martyr = leaderboard.sort_values(['Wins', 'Avg_Score'], ascending=[True, False])
+            # n2.info(f"**The Eternal Martyr**\n\n**{martyr.iloc[0]['player']}** ({martyr.iloc[0]['Avg_Score']} Avg)")
+        
+            # # 3. The Broken Spearhead: Most "Went First" with lowest win rate
+            # # We calculate 'Went First' counts from the raw match data
+            # wf_counts = df['went_first'].value_counts().reset_index()
+            # wf_counts.columns = ['player', 'Starts']
+            # # Join to leaderboard to check win rates
+            # spearhead_data = pd.merge(wf_counts, leaderboard, on='player')
+            # spearhead_data['Win_Rate'] = spearhead_data['Wins'] / spearhead_data['Played']
+            # # Filter for people who went first at least twice, then sort by win rate ascending
+            # spearhead = spearhead_data[spearhead_data['Starts'] >= 2].sort_values('Win_Rate', ascending=True)
+            # if not spearhead.empty:
+            #     n3.info(f"**The Broken Spearhead**\n\n**{spearhead.iloc[0]['player']}** (Went first {spearhead.iloc[0]['Starts']} times)")
+
+
+
+
+            # --- SECTOR COMMANDERS (Top Performer per Allegiance) ---
             st.write("### 🛡️ Sector Commanders")
-            # We unpivot to find which player performed best for each allegiance
+            # (Existing unpivot logic here...)
             p1 = df[['display_p1_name', 'p1_allegiance', 'p1_score_total']].rename(columns={'display_p1_name':'player', 'p1_allegiance':'allg', 'p1_score_total':'score'})
             p2 = df[['display_p2_name', 'p2_allegiance', 'p2_score_total']].rename(columns={'display_p2_name':'player', 'p2_allegiance':'allg', 'p2_score_total':'score'})
             all_perf = pd.concat([p1, p2])
+            commander_stats = all_perf.groupby(['allg', 'player']).agg(Total_VP=('score', 'sum')).reset_index()
             
-            # Group by Allegiance and Player to find the best in each category
-            commander_stats = all_perf.groupby(['allg', 'player']).agg(Total_VP=('score', 'sum'), Games=('score', 'count')).reset_index()
-            
-            # Create columns for the top 3 (or however many allegiances you have)
             allg_list = sorted(all_perf['allg'].unique())
             cols = st.columns(len(allg_list))
             
             for i, allg in enumerate(allg_list):
-                # Find the player with highest VP in this allegiance
                 top_in_allg = commander_stats[commander_stats['allg'] == allg].sort_values('Total_VP', ascending=False).iloc[0]
-                cols[i].metric(f"🚩 {allg}", top_in_allg['player'], f"{top_in_allg['Total_VP']} VP")
+                cols[i].info(
+                    f"**{allg} Commander**\n\n"
+                    f"**{top_in_allg['player']}** led the charge for {allg} with a total of **{top_in_allg['Total_VP']} VP**."
+                )
         
             st.divider()
         
-            # --- NEW: COMBAT EFFICIENCY (Averages) ---
-            st.write("### 🎯 Combat Efficiency")
-            avg_win_score = df[['p1_score_total', 'p2_score_total']].max(axis=1).mean().round(1)
-            # Filter out scores of 0 for the losing average to keep it realistic
-            losing_scores = df[['p1_score_total', 'p2_score_total']].min(axis=1)
-            avg_loss_score = losing_scores[losing_scores > 0].mean().round(1)
-            avg_diff = (df['p1_score_total'] - df['p2_score_total']).abs().mean().round(1)
-        
-            c1, c2, c3 = st.columns(3)
-            c1.metric("Avg Winning Score", f"{avg_win_score}")
-            c2.metric("Avg Losing Score", f"{avg_loss_score}")
-            c3.metric("Avg Score Diff", f"{avg_diff}")
-        
-            st.divider()
-        
-            # --- NARRATIVE AWARDS ---
+            # --- NARRATIVE AWARDS (The Intelligence Reports) ---
             st.write("### 🕵️ Intelligence Reports")
-            n1, n2, n3 = st.columns(3)
+            n1, n2 = st.columns(2)
+            n3, n4 = st.columns(2)
         
-            # 1. Tzeentch’s Plaything: High VP, Low Wins
+            # 1. Tzeentch’s Plaything
             plaything = leaderboard[leaderboard['Wins'] < 2].sort_values('Total_Points', ascending=False)
             if not plaything.empty:
-                n1.info(f"**Tzeentch’s Plaything**\n\n**{plaything.iloc[0]['player']}** ({plaything.iloc[0]['Total_Points']} VP)")
+                p_row = plaything.iloc[0]
+                n1.info(
+                    f"**Tzeentch’s Plaything**\n\n"
+                    f"**{p_row['player']}** accumulated a massive **{p_row['Total_Points']}** total points, "
+                    f"despite only securing **{p_row['Wins']}** wins. The Changer of Ways is pleased with this complexity."
+                )
         
-            # 2. The Eternal Martyr: Most losses, High average
+            # 2. The Eternal Martyr
             martyr = leaderboard.sort_values(['Wins', 'Avg_Score'], ascending=[True, False])
-            n2.info(f"**The Eternal Martyr**\n\n**{martyr.iloc[0]['player']}** ({martyr.iloc[0]['Avg_Score']} Avg)")
+            if not martyr.empty:
+                m_row = martyr.iloc[0]
+                n2.info(
+                    f"**The Eternal Martyr**\n\n"
+                    f"**{m_row['player']}** fought bravely to the bitter end. Despite the losses, "
+                    f"they maintained a high average of **{m_row['Avg_Score']} pts** per game. Their sacrifice is noted."
+                )
         
-            # 3. The Broken Spearhead: Most "Went First" with lowest win rate
+            # 3. The Broken Spearhead
             # We calculate 'Went First' counts from the raw match data
             wf_counts = df['went_first'].value_counts().reset_index()
             wf_counts.columns = ['player', 'Starts']
-            # Join to leaderboard to check win rates
             spearhead_data = pd.merge(wf_counts, leaderboard, on='player')
             spearhead_data['Win_Rate'] = spearhead_data['Wins'] / spearhead_data['Played']
             # Filter for people who went first at least twice, then sort by win rate ascending
             spearhead = spearhead_data[spearhead_data['Starts'] >= 2].sort_values('Win_Rate', ascending=True)
             if not spearhead.empty:
-                n3.info(f"**The Broken Spearhead**\n\n**{spearhead.iloc[0]['player']}** (Went first {spearhead.iloc[0]['Starts']} times)")
+                s_row = spearhead.iloc[0]
+                n3.warning(
+                    f"**The Broken Spearhead**\n\n"
+                    f"**{s_row['player']}** seized the initiative in **{s_row['Starts']}** separate matches, "
+                    f"yet found no victory in the charge. The best-laid plans often crumble upon contact."
+                )
+        
+            # 4. The Penitent’s Burden
+            if not leaderboard.empty:
+                p_row = leaderboard.iloc[-1]
+                n4.error(
+                    f"**The Penitent’s Burden**\n\n"
+                    f"**{p_row['player']}** finishes at the bottom of the standings. "
+                    f"Repentance is found through trial; the next sector awaits your redemption."
+                )
 
 
 
