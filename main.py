@@ -115,18 +115,14 @@ else:
         st.session_state.page = "Events"
         collapse_sidebar()
         st.rerun()
-    if st.sidebar.button("Graphs", disabled=True):
-        st.session_state.page = "Graphs"
-        collapse_sidebar()
-        st.rerun()
-    if st.sidebar.button("Personal Stats", disabled=True):
-        st.session_state.page = "Personal Stats"
-        collapse_sidebar()
-        st.rerun()
-    #if st.sidebar.button("Log Out"):
-        #supabase.auth.sign_out()
-        #del st.session_state.user
-        #st.rerun()
+    # if st.sidebar.button("Graphs"):
+    #     st.session_state.page = "Graphs"
+    #     collapse_sidebar()
+    #     st.rerun()
+    # if st.sidebar.button("Personal Stats"):
+    #     st.session_state.page = "Personal Stats"
+    #     collapse_sidebar()
+    #     st.rerun()
     if st.sidebar.button("Log Out"):
         supabase.auth.sign_out()
         # Clear session state completely to be safe
