@@ -701,8 +701,8 @@ else:
 
             else:
                 st.warning("No valid match data found after filtering out Dropped/Unplayed results.")
-        # else:
-            # st.info("No events found in the database.")
+        else:
+            st.info("No events found in the database.")
 
     elif st.session_state.page == "Graphs":
         st.header("Graphs")
