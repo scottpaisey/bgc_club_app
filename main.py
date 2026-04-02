@@ -538,40 +538,41 @@ else:
         st.divider()
 
         # --- STEP 1: DEFINE ALL REPORT FUNCTIONS ---
-
-        def show_leaderboard(df):
+        
+          def show_leaderboard(df):
             st.subheader(f"🏆 {selected_event} Rankings")
-            p1_data = df[['display_p1_name', 'p1_score_total', 'display_p2_name']].copy()
-            p1_data.columns = ['player', 'score', 'opponent']
-            p1_data['is_win'] = df['p1_score_total'] > df['p2_score_total']
-
-            p2_data = df[['display_p2_name', 'p2_score_total', 'display_p1_name']].copy()
-            p2_data.columns = ['player', 'score', 'opponent']
-            p2_data['is_win'] = df['p2_score_total'] > df['p1_score_total']
-
-            combined = pd.concat([p1_data, p2_data])
+        
+            # 1. Separate Player 1 and Player 2 performances
+            p1 = df[['display_p1_name', 'p1_score_total', 'p2_score_total', 'p1_status']].copy()
+            p1.columns = ['player', 'score', 'opp_score', 'status']
+            
+            p2 = df[['display_p2_name', 'p2_score_total', 'p1_score_total', 'p2_status']].copy()
+            p2.columns = ['player', 'score', 'opp_score', 'status']
+        
+            # 2. Combine into one long list
+            combined = pd.concat([p1, p2])
+        
+            # 3. FILTER INDIVIDUALLY: Only keep players who are 'Checked In'
+            # If P1 is 'Checked In' but P2 is 'Dropped', P1 stays in the list!
+            combined = combined[combined['status'] == 'Checked In']
+        
+            # 4. Calculate Wins
+            combined['is_win'] = combined['score'] > combined['opp_score']
+            
+            # 5. Aggregate Rankings
             leaderboard = combined.groupby('player').agg(
                 Played=('player', 'count'),
                 Wins=('is_win', 'sum'),
                 Total_Points=('score', 'sum')
             ).reset_index()
-
+        
+            # 6. Sort and Rank
             leaderboard = leaderboard.sort_values(by=['Wins', 'Total_Points'], ascending=False)
             leaderboard.insert(0, 'Rank', range(1, len(leaderboard) + 1))
-
-            st.dataframe(
-                leaderboard,
-                column_config={
-                    "Rank": st.column_config.NumberColumn("Rank", format="#%d"),
-                    "player": "Player Name",
-                    "Played": "Games",
-                    "Wins": "Wins ✅",
-                    "Total_Points": st.column_config.NumberColumn("Total Points", format="%d pts"),
-                },
-                hide_index=True,
-                use_container_width=True
-            )
+        
+            st.dataframe(leaderboard, hide_index=True, use_container_width=True)
             return leaderboard
+
 
         def show_event_awards(df, leaderboard):
             st.subheader("🎖️ The Sector Awards")
@@ -649,29 +650,36 @@ else:
             event_options = sorted(list(set([row['event_name'] for row in event_res.data if row['event_name']])))
             selected_event = st.selectbox("Select Event to View Reports", event_options)
 
-            # Fetch filtered data
+            # --- STEP 2: FETCH & FILTER DATA ---
             res = supabase.table("match_results").select("*").eq("event_name", selected_event).execute()
-            if res.data:
-                raw_df = pd.DataFrame(res.data)
-                
-                # Apply Global Pre-Filters
-                event_df = raw_df[
-                    (raw_df['status'] != 'Not Played') & 
-                    (raw_df['p1_status'] == 'Checked In') & 
-                    (raw_df['p2_status'] == 'Checked In')
-                ].copy()
+            
+                if res.data:
+                    raw_df = pd.DataFrame(res.data)
+                    
+                    # A. REMOVE 'NOT LOGGED' (As requested: only Logged and Not Played remain)
+                    # This is our "Master List" for the event
+                    master_df = raw_df[raw_df['status'] != 'Not Logged'].copy()
+        
+                    # B. AWARDS DF (Exclude 'Not Played' to keep margins/averages clean)
+                    awards_df = master_df[master_df['status'] != 'Not Played'].copy()
+        
+                    if master_df.empty:
+                        st.warning("No logged matches found for this event.")
+                    else:
+                        # --- STEP 3: RUN REPORTS ---
+                        # Pass the MASTER list to the leaderboard (it handles 'Dropped' internally)
+                        ranking_data = show_leaderboard(master_df)
+                        
+                        st.divider()
+                        # Pass the AWARDS list to the metrics (prevents 100pt bye-skewing)
+                        show_event_awards(awards_df, ranking_data)
+        
+                        st.divider()
+                        show_faction_win_rates(awards_df)
+                        
+                        st.divider()
+                        show_faction_turnout(awards_df)
 
-                if not event_df.empty:
-                    # --- STEP 3: RUN REPORTS IN ORDER ---
-                    ranking_data = show_leaderboard(event_df)
-                    st.divider()
-                    show_event_awards(event_df, ranking_data)
-                    st.divider()
-                    show_faction_win_rates(event_df)
-                    st.divider()
-                    show_faction_turnout(event_df)
-                    st.divider()
-                    show_allegiance_points_pie(event_df)
                 else:
                     st.warning("No valid match data found after filtering out Dropped/Unplayed results.")
         else:
