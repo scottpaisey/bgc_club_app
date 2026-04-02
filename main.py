@@ -1,9 +1,7 @@
 import streamlit as st
-# import supabase
 from supabase import create_client, Client
 from streamlit_js_eval import streamlit_js_eval
 from dotenv import load_dotenv
-# from pandas import DataFrame
 import pandas as pd
 import plotly.express as px
 import time
@@ -503,6 +501,19 @@ else:
                         # "club_id": ,
                     }
 
+                # --- DEBUG MONITOR ---
+                with st.sidebar.expander("🔍 Variable Monitor", expanded=True):
+                    st.write(f"**p2_id:** `{p2_id}`")
+                    st.write(f"**p2_name:** `{p2_name}`")
+                    st.write(f"**Type of p2_id:** `{type(p2_id).__name__}`")
+                    st.write("### 🚨 Database Submission Debug")
+                    for key, value in match_details.items():
+                        if value == "krystal":
+                            st.error(
+                                f"FOUND THE ERROR: The column **'{key}'** is trying to send 'krystal' but it needs to be NULL (None).")
+                    st.json(match_details)  # This shows you the whole dictionary
+                # -----------------------------
+
                 supabase.table("matches").insert(match_details).execute()
 
                 st.success("Game posted to Supabase!")
@@ -525,172 +536,164 @@ else:
         st.divider()
 
         # --- STEP 1: DEFINE ALL REPORT FUNCTIONS ---
-        
+
         def show_leaderboard(df):
             st.subheader(f"🏆 {selected_event} Rankings")
-        
-            # 1. Separate Player 1 and Player 2 performances
-            p1 = df[['display_p1_name', 'p1_score_total', 'p2_score_total', 'p1_status', 'round_number', 'table_number']].copy()
-            p1.columns = ['player', 'score', 'opp_score', 'status', 'round', 'table']
-            
-            p2 = df[['display_p2_name', 'p2_score_total', 'p1_score_total', 'p2_status', 'round_number', 'table_number']].copy()
-            p2.columns = ['player', 'score', 'opp_score', 'status', 'round', 'table']
-        
-            # 2. Combine into one long list
-            combined = pd.concat([p1, p2])
-        
-            # --- DEBUG SECTION ---
-            # Add a search box in an expander to investigate specific players
-            with st.expander("🔍 Debug: Investigate Player Games"):
-                search_name = st.text_input("Enter Player Name to see their individual game logs:", placeholder="e.g. Kerith B")
-                if search_name:
-                    # We show their data BEFORE the 'Checked In' filter to see if a game is being blocked
-                    player_logs = combined[combined['player'].str.contains(search_name, case=False, na=False)]
-                    st.write(f"Showing all logs found for **{search_name}** (Pre-Filter):")
-                    st.dataframe(player_logs, use_container_width=True)
-                    
-                    # Count logic help
-                    checked_in_count = len(player_logs[player_logs['status'] == 'Checked In'])
-                    st.info(f"Summary for {search_name}: Found {len(player_logs)} total match rows. {checked_in_count} are marked 'Checked In'.")
-            # ---------------------
-        
-            # 3. FILTER INDIVIDUALLY: Only keep players who are 'Checked In'
-            combined = combined[combined['status'] == 'Checked In']
-        
-            if combined.empty:
-                st.warning("No games found for checked-in players.")
-                return None
-        
-            # 4. Calculate Wins
-            combined['is_win'] = combined['score'] > combined['opp_score']
-            
-            # 5. Aggregate Rankings
+            p1_data = df[['display_p1_name', 'p1_score_total', 'display_p2_name']].copy()
+            p1_data.columns = ['player', 'score', 'opponent']
+            p1_data['is_win'] = df['p1_score_total'] > df['p2_score_total']
+
+            p2_data = df[['display_p2_name', 'p2_score_total', 'display_p1_name']].copy()
+            p2_data.columns = ['player', 'score', 'opponent']
+            p2_data['is_win'] = df['p2_score_total'] > df['p1_score_total']
+
+            combined = pd.concat([p1_data, p2_data])
             leaderboard = combined.groupby('player').agg(
                 Played=('player', 'count'),
                 Wins=('is_win', 'sum'),
                 Total_Points=('score', 'sum')
             ).reset_index()
-        
-            # 6. Sort and Rank
+
             leaderboard = leaderboard.sort_values(by=['Wins', 'Total_Points'], ascending=False)
             leaderboard.insert(0, 'Rank', range(1, len(leaderboard) + 1))
-        
-            st.dataframe(leaderboard, hide_index=True, use_container_width=True)
+
+            st.dataframe(
+                leaderboard,
+                column_config={
+                    "Rank": st.column_config.NumberColumn("Rank", format="#%d"),
+                    "player": "Player Name",
+                    "Played": "Games",
+                    "Wins": "Wins ✅",
+                    "Total_Points": st.column_config.NumberColumn("Total Points", format="%d pts"),
+                },
+                hide_index=True,
+                use_container_width=True
+            )
             return leaderboard
 
-
-
-        def show_event_awards(df, leaderboard):
-            st.subheader("🎖️ The Sector Awards")
+        # def show_event_awards(df, leaderboard):
+        #     st.subheader("🎖️ The Sector Awards")
             
-            # Helper to safely calculate averages
-            leaderboard['Avg_Score'] = (leaderboard['Total_Points'] / leaderboard['Played']).round(1)
+        #     # Helper to safely calculate averages
+        #     leaderboard['Avg_Score'] = (leaderboard['Total_Points'] / leaderboard['Played']).round(1)
             
-            # --- 1. Warmaster & Penitent ---
-            warmaster = leaderboard.iloc[0]['player']
-            penitent = leaderboard.iloc[-1]['player']
+        #     # --- 1. Warmaster & Penitent ---
+        #     warmaster = leaderboard.iloc[0]['player']
+        #     penitent = leaderboard.iloc[-1]['player']
             
-            # --- 2. Master of the Tactica ---
-            top_tactician = leaderboard.sort_values('Avg_Score', ascending=False).iloc[0]
+        #     # --- 2. Master of the Tactica ---
+        #     top_tactician = leaderboard.sort_values('Avg_Score', ascending=False).iloc[0]
             
-            # --- 3. Exterminatus Protocol (Max Margin) ---
-            max_mar_row = df.loc[df[['p1_score_mar', 'p2_score_mar']].max(axis=1).idxmax()]
-            if max_mar_row['p1_score_mar'] > max_mar_row['p2_score_mar']:
-                ex_player, max_mar = max_mar_row['display_p1_name'], max_mar_row['p1_score_mar']
-            else:
-                ex_player, max_mar = max_mar_row['display_p2_name'], max_mar_row['p2_score_mar']
+        #     # --- 3. Exterminatus Protocol (Max Margin) ---
+        #     max_mar_row = df.loc[df[['p1_score_mar', 'p2_score_mar']].max(axis=1).idxmax()]
+        #     if max_mar_row['p1_score_mar'] > max_mar_row['p2_score_mar']:
+        #         ex_player, max_mar = max_mar_row['display_p1_name'], max_mar_row['p1_score_mar']
+        #     else:
+        #         ex_player, max_mar = max_mar_row['display_p2_name'], max_mar_row['p2_score_mar']
         
-            col1, col2, col3 = st.columns(3)
-            col1.metric("⚔️ Warmaster", warmaster, "1st Place")
-            col2.metric("📜 Master of Tactica", top_tactician['player'], f"{top_tactician['Avg_Score']} Avg")
-            col3.metric("💥 Exterminatus", ex_player, f"+{max_mar} Margin")
+        #     col1, col2, col3 = st.columns(3)
+        #     col1.metric("⚔️ Warmaster", warmaster, "1st Place")
+        #     col2.metric("📜 Master of Tactica", top_tactician['player'], f"{top_tactician['Avg_Score']} Avg")
+        #     col3.metric("💥 Exterminatus", ex_player, f"+{max_mar} Margin")
             
-            st.divider()
-            st.write("### 🕵️ Intelligence Reports")
-            c1, c2 = st.columns(2)
-            plaything = leaderboard[leaderboard['Wins'] < 2].sort_values('Total_Points', ascending=False)
-            if not plaything.empty:
-                c1.info(f"**Tzeentch’s Plaything:** {plaything.iloc[0]['player']} (High VP, Low Wins)")
-            martyr = leaderboard.sort_values(['Wins', 'Avg_Score'], ascending=[True, False])
-            c2.info(f"**The Eternal Martyr:** {martyr.iloc[0]['player']} (Highest Avg in Defeat)")
+        #     st.divider()
+        #     st.write("### 🕵️ Intelligence Reports")
+        #     c1, c2 = st.columns(2)
+        #     plaything = leaderboard[leaderboard['Wins'] < 2].sort_values('Total_Points', ascending=False)
+        #     if not plaything.empty:
+        #         c1.info(f"**Tzeentch’s Plaything:** {plaything.iloc[0]['player']} (High VP, Low Wins)")
+        #     martyr = leaderboard.sort_values(['Wins', 'Avg_Score'], ascending=[True, False])
+        #     c2.info(f"**The Eternal Martyr:** {martyr.iloc[0]['player']} (Highest Avg in Defeat)")
 
-        def show_faction_win_rates(df):
-            st.subheader(f"📊 {selected_event} Faction Meta")
-            p1_data = df[['p1_faction', 'p1_score_total', 'p2_score_total']].copy()
-            p1_data.columns = ['faction', 'score', 'opp_score']
-            p2_data = df[['p2_faction', 'p2_score_total', 'p1_score_total']].copy()
-            p2_data.columns = ['faction', 'score', 'opp_score']
-            combined = pd.concat([p1_data, p2_data])
-            combined['is_win'] = combined['score'] > combined['opp_score']
-            stats = combined.groupby('faction').agg(Total=('faction', 'count'), Wins=('is_win', 'sum')).reset_index()
-            stats['Win_Rate'] = (stats['Wins'] / stats['Total'] * 100).round(1)
-            stats = stats.sort_values(by='Win_Rate', ascending=False)
-            fig = px.bar(stats, x='faction', y='Win_Rate', text='Win_Rate', color='Win_Rate', color_continuous_scale='RdYlGn', height=400)
-            fig.update_layout(yaxis_range=[0, 110])
-            st.plotly_chart(fig, use_container_width=True)
+        # def show_faction_win_rates(df):
+        #     st.subheader(f"📊 {selected_event} Faction Meta")
+        #     p1_data = df[['p1_faction', 'p1_score_total', 'p2_score_total']].copy()
+        #     p1_data.columns = ['faction', 'score', 'opp_score']
+        #     p2_data = df[['p2_faction', 'p2_score_total', 'p1_score_total']].copy()
+        #     p2_data.columns = ['faction', 'score', 'opp_score']
+        #     combined = pd.concat([p1_data, p2_data])
+        #     combined['is_win'] = combined['score'] > combined['opp_score']
+        #     stats = combined.groupby('faction').agg(Total=('faction', 'count'), Wins=('is_win', 'sum')).reset_index()
+        #     stats['Win_Rate'] = (stats['Wins'] / stats['Total'] * 100).round(1)
+        #     stats = stats.sort_values(by='Win_Rate', ascending=False)
+        #     fig = px.bar(stats, x='faction', y='Win_Rate', text='Win_Rate', color='Win_Rate', color_continuous_scale='RdYlGn', height=400)
+        #     fig.update_layout(yaxis_range=[0, 110])
+        #     st.plotly_chart(fig, use_container_width=True)
 
-        def show_faction_turnout(df):
-            st.subheader(f"🍕 {selected_event} Faction Turnout")
-            combined = pd.concat([df[['p1_faction']].rename(columns={'p1_faction':'f'}), df[['p2_faction']].rename(columns={'p2_faction':'f'})])
-            stats = combined['f'].value_counts().reset_index()
-            stats.columns = ['Faction', 'Count']
-            fig = px.pie(stats, values='Count', names='Faction', hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
-            st.plotly_chart(fig, use_container_width=True)
+        # def show_faction_turnout(df):
+        #     st.subheader(f"🍕 {selected_event} Faction Turnout")
+        #     combined = pd.concat([df[['p1_faction']].rename(columns={'p1_faction':'f'}), df[['p2_faction']].rename(columns={'p2_faction':'f'})])
+        #     stats = combined['f'].value_counts().reset_index()
+        #     stats.columns = ['Faction', 'Count']
+        #     fig = px.pie(stats, values='Count', names='Faction', hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
+        #     st.plotly_chart(fig, use_container_width=True)
 
-        def show_allegiance_points_pie(df):
-            st.subheader(f"🍰 {selected_event} Points per Allegiance")
-            p1 = df[['p1_allegiance', 'p1_score_total']].rename(columns={'p1_allegiance':'a', 'p1_score_total':'s'})
-            p2 = df[['p2_allegiance', 'p2_score_total']].rename(columns={'p2_allegiance':'a', 'p2_score_total':'s'})
-            combined = pd.concat([p1, p2])
-            agg = combined.groupby('a')['s'].sum().reset_index().sort_values('s', ascending=False)
-            agg['label'] = agg['a'] + " (" + agg['s'].astype(str) + " pts)"
-            fig = px.pie(agg, values='s', names='label', hole=0.5, title=f"Total Event Points: {agg['s'].sum():,}")
-            fig.update_traces(textinfo='percent+label')
-            fig.update_layout(showlegend=False)
-            st.plotly_chart(fig, use_container_width=True)
+        # def show_allegiance_points_pie(df):
+        #     st.subheader(f"🍰 {selected_event} Points per Allegiance")
+        #     p1 = df[['p1_allegiance', 'p1_score_total']].rename(columns={'p1_allegiance':'a', 'p1_score_total':'s'})
+        #     p2 = df[['p2_allegiance', 'p2_score_total']].rename(columns={'p2_allegiance':'a', 'p2_score_total':'s'})
+        #     combined = pd.concat([p1, p2])
+        #     agg = combined.groupby('a')['s'].sum().reset_index().sort_values('s', ascending=False)
+        #     agg['label'] = agg['a'] + " (" + agg['s'].astype(str) + " pts)"
+        #     fig = px.pie(agg, values='s', names='label', hole=0.5, title=f"Total Event Points: {agg['s'].sum():,}")
+        #     fig.update_traces(textinfo='percent+label')
+        #     fig.update_layout(showlegend=False)
+        #     st.plotly_chart(fig, use_container_width=True)
 
-        # --- STEP 2: FETCH & FILTER DATA ---
-        # Get unique events for the dropdown
-        event_res = supabase.table("match_results").select("event_name").execute()
-        if event_res.data:
-            event_options = sorted(list(set([row['event_name'] for row in event_res.data if row['event_name']])))
-            selected_event = st.selectbox("Select Event to View Reports", event_options)
+        # # --- STEP 2: FETCH & FILTER DATA ---
+        # # Get unique events for the dropdown
+        # event_res = supabase.table("match_results").select("event_name").execute()
+        # if event_res.data:
+        #     event_options = sorted(list(set([row['event_name'] for row in event_res.data if row['event_name']])))
+        #     selected_event = st.selectbox("Select Event to View Reports", event_options)
 
-            # --- STEP 2: FETCH & FILTER DATA ---
-            res = supabase.table("match_results").select("*").eq("event_name", selected_event).execute()
+        #     # Fetch filtered data
+        #     res = supabase.table("match_results").select("*").eq("event_name", selected_event).execute()
+        #     if res.data:
+        #         raw_df = pd.DataFrame(res.data)
+                
+        #         # Apply Global Pre-Filters
+        #         event_df = raw_df[
+        #             (raw_df['status'] != 'Not Played') & 
+        #             (raw_df['p1_status'] == 'Checked In') & 
+        #             (raw_df['p2_status'] == 'Checked In')
+        #         ].copy()
+
+        #         if not event_df.empty:
+        #             # --- STEP 3: RUN REPORTS IN ORDER ---
+        #             ranking_data = show_leaderboard(event_df)
+        #             st.divider()
+        #             show_event_awards(event_df, ranking_data)
+        #             st.divider()
+        #             show_faction_win_rates(event_df)
+        #             st.divider()
+        #             show_faction_turnout(event_df)
+        #             st.divider()
+        #             show_allegiance_points_pie(event_df)
+        #         else:
+        #             st.warning("No valid match data found after filtering out Dropped/Unplayed results.")
+        # else:
+            # st.info("No events found in the database.")
+
+    event_res = supabase.table("match_results").select("event_name").execute()
+    if event_res.data:
+        event_options = sorted(list(set([row['event_name'] for row in event_res.data if row['event_name']])))
+        selected_event = st.selectbox("Select Event to View Reports", event_options)
+
+        # Fetch filtered data
+        res = supabase.table("match_results").select("*").eq("event_name", selected_event).execute()
+        if res.data:
+            raw_df = pd.DataFrame(res.data)
             
-                if res.data:
-                    raw_df = pd.DataFrame(res.data)
-                    
-                    # A. REMOVE 'NOT LOGGED' (As requested: only Logged and Not Played remain)
-                    # This is our "Master List" for the event
-                    master_df = raw_df[raw_df['status'] != 'Not Logged'].copy()
-        
-                    # B. AWARDS DF (Exclude 'Not Played' to keep margins/averages clean)
-                    awards_df = master_df[master_df['status'] != 'Not Played'].copy()
-        
-                    if master_df.empty:
-                        st.warning("No logged matches found for this event.")
-                    else:
-                        # --- STEP 3: RUN REPORTS ---
-                        # Pass the MASTER list to the leaderboard (it handles 'Dropped' internally)
-                        ranking_data = show_leaderboard(master_df)
-                        
-                        st.divider()
-                        # Pass the AWARDS list to the metrics (prevents 100pt bye-skewing)
-                        show_event_awards(awards_df, ranking_data)
-        
-                        st.divider()
-                        show_faction_win_rates(awards_df)
-                        
-                        st.divider()
-                        show_faction_turnout(awards_df)
+            # Apply Global Pre-Filters
+            event_df = raw_df[
+                (raw_df['status'] != 'Not Played') & 
+                (raw_df['p1_status'] == 'Checked In') & 
+                (raw_df['p2_status'] == 'Checked In')
+            ].copy()
 
-                else:
-                    st.warning("No valid match data found after filtering out Dropped/Unplayed results.")
-        else:
-            st.info("No events found in the database.")
-
+    show_leaderboard(df)
+    
 
     elif st.session_state.page == "Graphs":
         st.header("Graphs")
