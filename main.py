@@ -600,26 +600,26 @@ else:
             
             st.divider()
         
-            # # --- NEW: SECTOR COMMANDERS (Top Performer per Allegiance) ---
-            # st.write("### 🛡️ Sector Commanders")
-            # # We unpivot to find which player performed best for each allegiance
-            # p1 = df[['display_p1_name', 'p1_allegiance', 'p1_score_total']].rename(columns={'display_p1_name':'player', 'p1_allegiance':'allg', 'p1_score_total':'score'})
-            # p2 = df[['display_p2_name', 'p2_allegiance', 'p2_score_total']].rename(columns={'display_p2_name':'player', 'p2_allegiance':'allg', 'p2_score_total':'score'})
-            # all_perf = pd.concat([p1, p2])
+            # --- NEW: SECTOR COMMANDERS (Top Performer per Allegiance) ---
+            st.write("### 🛡️ Sector Commanders")
+            # We unpivot to find which player performed best for each allegiance
+            p1 = df[['display_p1_name', 'p1_allegiance', 'p1_score_total']].rename(columns={'display_p1_name':'player', 'p1_allegiance':'allg', 'p1_score_total':'score'})
+            p2 = df[['display_p2_name', 'p2_allegiance', 'p2_score_total']].rename(columns={'display_p2_name':'player', 'p2_allegiance':'allg', 'p2_score_total':'score'})
+            all_perf = pd.concat([p1, p2])
             
-            # # Group by Allegiance and Player to find the best in each category
-            # commander_stats = all_perf.groupby(['allg', 'player']).agg(Total_VP=('score', 'sum'), Games=('score', 'count')).reset_index()
+            # Group by Allegiance and Player to find the best in each category
+            commander_stats = all_perf.groupby(['allg', 'player']).agg(Total_VP=('score', 'sum'), Games=('score', 'count')).reset_index()
             
-            # # Create columns for the top 3 (or however many allegiances you have)
-            # allg_list = sorted(all_perf['allg'].unique())
-            # cols = st.columns(len(allg_list))
+            # Create columns for the top 3 (or however many allegiances you have)
+            allg_list = sorted(all_perf['allg'].unique())
+            cols = st.columns(len(allg_list))
             
-            # for i, allg in enumerate(allg_list):
-            #     # Find the player with highest VP in this allegiance
-            #     top_in_allg = commander_stats[commander_stats['allg'] == allg].sort_values('Total_VP', ascending=False).iloc[0]
-            #     cols[i].metric(f"🚩 {allg}", top_in_allg['player'], f"{top_in_allg['Total_VP']} VP")
+            for i, allg in enumerate(allg_list):
+                # Find the player with highest VP in this allegiance
+                top_in_allg = commander_stats[commander_stats['allg'] == allg].sort_values('Total_VP', ascending=False).iloc[0]
+                cols[i].metric(f"🚩 {allg}", top_in_allg['player'], f"{top_in_allg['Total_VP']} VP")
         
-            # st.divider()
+            st.divider()
         
             # # --- NEW: COMBAT EFFICIENCY (Averages) ---
             # st.write("### 🎯 Combat Efficiency")
@@ -664,25 +664,25 @@ else:
 
 
 
-            # --- SECTOR COMMANDERS (Top Performer per Allegiance) ---
-            st.write("### 🛡️ Sector Commanders")
-            # (Existing unpivot logic here...)
-            p1 = df[['display_p1_name', 'p1_allegiance', 'p1_score_total']].rename(columns={'display_p1_name':'player', 'p1_allegiance':'allg', 'p1_score_total':'score'})
-            p2 = df[['display_p2_name', 'p2_allegiance', 'p2_score_total']].rename(columns={'display_p2_name':'player', 'p2_allegiance':'allg', 'p2_score_total':'score'})
-            all_perf = pd.concat([p1, p2])
-            commander_stats = all_perf.groupby(['allg', 'player']).agg(Total_VP=('score', 'sum')).reset_index()
+            # # --- SECTOR COMMANDERS (Top Performer per Allegiance) ---
+            # st.write("### 🛡️ Sector Commanders")
+            # # (Existing unpivot logic here...)
+            # p1 = df[['display_p1_name', 'p1_allegiance', 'p1_score_total']].rename(columns={'display_p1_name':'player', 'p1_allegiance':'allg', 'p1_score_total':'score'})
+            # p2 = df[['display_p2_name', 'p2_allegiance', 'p2_score_total']].rename(columns={'display_p2_name':'player', 'p2_allegiance':'allg', 'p2_score_total':'score'})
+            # all_perf = pd.concat([p1, p2])
+            # commander_stats = all_perf.groupby(['allg', 'player']).agg(Total_VP=('score', 'sum')).reset_index()
             
-            allg_list = sorted(all_perf['allg'].unique())
-            cols = st.columns(len(allg_list))
+            # allg_list = sorted(all_perf['allg'].unique())
+            # cols = st.columns(len(allg_list))
             
-            for i, allg in enumerate(allg_list):
-                top_in_allg = commander_stats[commander_stats['allg'] == allg].sort_values('Total_VP', ascending=False).iloc[0]
-                cols[i].info(
-                    f"**{allg} Commander**\n\n"
-                    f"**{top_in_allg['player']}** led the charge for {allg} with a total of **{top_in_allg['Total_VP']} VP**."
-                )
-        
-            st.divider()
+            # for i, allg in enumerate(allg_list):
+            #     top_in_allg = commander_stats[commander_stats['allg'] == allg].sort_values('Total_VP', ascending=False).iloc[0]
+            #     cols[i].info(
+            #         f"**{allg} Commander**\n\n"
+            #         f"**{top_in_allg['player']}** led the charge for {allg} with a total of **{top_in_allg['Total_VP']} VP**."
+            #     )
+        # 
+            # st.divider()
         
             # --- NARRATIVE AWARDS (The Intelligence Reports) ---
             st.write("### 🕵️ Intelligence Reports")
