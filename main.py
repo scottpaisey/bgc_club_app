@@ -636,103 +636,81 @@ else:
         
             # st.divider()
         
-            # # --- NARRATIVE AWARDS ---
-            # st.write("### 🕵️ Intelligence Reports")
-            # n1, n2, n3 = st.columns(3)
-        
-            # # 1. Tzeentch’s Plaything: High VP, Low Wins
-            # plaything = leaderboard[leaderboard['Wins'] < 2].sort_values('Total_Points', ascending=False)
-            # if not plaything.empty:
-            #     n1.info(f"**Tzeentch’s Plaything**\n\n**{plaything.iloc[0]['player']}** ({plaything.iloc[0]['Total_Points']} VP)")
-        
-            # # 2. The Eternal Martyr: Most losses, High average
-            # martyr = leaderboard.sort_values(['Wins', 'Avg_Score'], ascending=[True, False])
-            # n2.info(f"**The Eternal Martyr**\n\n**{martyr.iloc[0]['player']}** ({martyr.iloc[0]['Avg_Score']} Avg)")
-        
-            # # 3. The Broken Spearhead: Most "Went First" with lowest win rate
-            # # We calculate 'Went First' counts from the raw match data
-            # wf_counts = df['went_first'].value_counts().reset_index()
-            # wf_counts.columns = ['player', 'Starts']
-            # # Join to leaderboard to check win rates
-            # spearhead_data = pd.merge(wf_counts, leaderboard, on='player')
-            # spearhead_data['Win_Rate'] = spearhead_data['Wins'] / spearhead_data['Played']
-            # # Filter for people who went first at least twice, then sort by win rate ascending
-            # spearhead = spearhead_data[spearhead_data['Starts'] >= 2].sort_values('Win_Rate', ascending=True)
-            # if not spearhead.empty:
-            #     n3.info(f"**The Broken Spearhead**\n\n**{spearhead.iloc[0]['player']}** (Went first {spearhead.iloc[0]['Starts']} times)")
-
-
-
-
-            # # --- SECTOR COMMANDERS (Top Performer per Allegiance) ---
-            # st.write("### 🛡️ Sector Commanders")
-            # # (Existing unpivot logic here...)
-            # p1 = df[['display_p1_name', 'p1_allegiance', 'p1_score_total']].rename(columns={'display_p1_name':'player', 'p1_allegiance':'allg', 'p1_score_total':'score'})
-            # p2 = df[['display_p2_name', 'p2_allegiance', 'p2_score_total']].rename(columns={'display_p2_name':'player', 'p2_allegiance':'allg', 'p2_score_total':'score'})
-            # all_perf = pd.concat([p1, p2])
-            # commander_stats = all_perf.groupby(['allg', 'player']).agg(Total_VP=('score', 'sum')).reset_index()
-            
-            # allg_list = sorted(all_perf['allg'].unique())
-            # cols = st.columns(len(allg_list))
-            
-            # for i, allg in enumerate(allg_list):
-            #     top_in_allg = commander_stats[commander_stats['allg'] == allg].sort_values('Total_VP', ascending=False).iloc[0]
-            #     cols[i].info(
-            #         f"**{allg} Commander**\n\n"
-            #         f"**{top_in_allg['player']}** led the charge for {allg} with a total of **{top_in_allg['Total_VP']} VP**."
-            #     )
-        # 
-            # st.divider()
-        
-            # --- NARRATIVE AWARDS (The Intelligence Reports) ---
+            # --- NARRATIVE AWARDS ---
             st.write("### 🕵️ Intelligence Reports")
-            n1, n2 = st.columns(2)
-            n3, n4 = st.columns(2)
+            n1, n2, n3 = st.columns(3)
         
-            # 1. Tzeentch’s Plaything
+            # 1. Tzeentch’s Plaything: High VP, Low Wins
             plaything = leaderboard[leaderboard['Wins'] < 2].sort_values('Total_Points', ascending=False)
             if not plaything.empty:
-                p_row = plaything.iloc[0]
-                n1.info(
-                    f"**Tzeentch’s Plaything**\n\n"
-                    f"**{p_row['player']}** accumulated a massive **{p_row['Total_Points']}** total points, "
-                    f"despite only securing **{p_row['Wins']}** wins. The Changer of Ways is pleased with this complexity."
-                )
+                n1.info(f"**Tzeentch’s Plaything**\n\n**{plaything.iloc[0]['player']}** ({plaything.iloc[0]['Total_Points']} VP)")
         
-            # 2. The Eternal Martyr
+            # 2. The Eternal Martyr: Most losses, High average
             martyr = leaderboard.sort_values(['Wins', 'Avg_Score'], ascending=[True, False])
-            if not martyr.empty:
-                m_row = martyr.iloc[0]
-                n2.info(
-                    f"**The Eternal Martyr**\n\n"
-                    f"**{m_row['player']}** fought bravely to the bitter end. Despite the losses, "
-                    f"they maintained a high average of **{m_row['Avg_Score']} pts** per game. Their sacrifice is noted."
-                )
+            n2.info(f"**The Eternal Martyr**\n\n**{martyr.iloc[0]['player']}** ({martyr.iloc[0]['Avg_Score']} Avg)")
         
-            # 3. The Broken Spearhead
+            # 3. The Broken Spearhead: Most "Went First" with lowest win rate
             # We calculate 'Went First' counts from the raw match data
             wf_counts = df['went_first'].value_counts().reset_index()
             wf_counts.columns = ['player', 'Starts']
+            # Join to leaderboard to check win rates
             spearhead_data = pd.merge(wf_counts, leaderboard, on='player')
             spearhead_data['Win_Rate'] = spearhead_data['Wins'] / spearhead_data['Played']
             # Filter for people who went first at least twice, then sort by win rate ascending
             spearhead = spearhead_data[spearhead_data['Starts'] >= 2].sort_values('Win_Rate', ascending=True)
             if not spearhead.empty:
-                s_row = spearhead.iloc[0]
-                n3.warning(
-                    f"**The Broken Spearhead**\n\n"
-                    f"**{s_row['player']}** seized the initiative in **{s_row['Starts']}** separate matches, "
-                    f"yet found no victory in the charge. The best-laid plans often crumble upon contact."
-                )
+                n3.info(f"**The Broken Spearhead**\n\n**{spearhead.iloc[0]['player']}** (Went first {spearhead.iloc[0]['Starts']} times)")
+
         
-            # 4. The Penitent’s Burden
-            if not leaderboard.empty:
-                p_row = leaderboard.iloc[-1]
-                n4.error(
-                    f"**The Penitent’s Burden**\n\n"
-                    f"**{p_row['player']}** finishes at the bottom of the standings. "
-                    f"Repentance is found through trial; the next sector awaits your redemption."
-                )
+            # # --- NARRATIVE AWARDS (The Intelligence Reports) ---
+            # st.write("### 🕵️ Intelligence Reports")
+            # n1, n2 = st.columns(2)
+            # n3, n4 = st.columns(2)
+        
+            # # 1. Tzeentch’s Plaything
+            # plaything = leaderboard[leaderboard['Wins'] < 2].sort_values('Total_Points', ascending=False)
+            # if not plaything.empty:
+            #     p_row = plaything.iloc[0]
+            #     n1.info(
+            #         f"**Tzeentch’s Plaything**\n\n"
+            #         f"**{p_row['player']}** accumulated a massive **{p_row['Total_Points']}** total points, "
+            #         f"despite only securing **{p_row['Wins']}** wins. The Changer of Ways is pleased with this complexity."
+            #     )
+        
+            # # 2. The Eternal Martyr
+            # martyr = leaderboard.sort_values(['Wins', 'Avg_Score'], ascending=[True, False])
+            # if not martyr.empty:
+            #     m_row = martyr.iloc[0]
+            #     n2.info(
+            #         f"**The Eternal Martyr**\n\n"
+            #         f"**{m_row['player']}** fought bravely to the bitter end. Despite the losses, "
+            #         f"they maintained a high average of **{m_row['Avg_Score']} pts** per game. Their sacrifice is noted."
+            #     )
+        
+            # # 3. The Broken Spearhead
+            # # We calculate 'Went First' counts from the raw match data
+            # wf_counts = df['went_first'].value_counts().reset_index()
+            # wf_counts.columns = ['player', 'Starts']
+            # spearhead_data = pd.merge(wf_counts, leaderboard, on='player')
+            # spearhead_data['Win_Rate'] = spearhead_data['Wins'] / spearhead_data['Played']
+            # # Filter for people who went first at least twice, then sort by win rate ascending
+            # spearhead = spearhead_data[spearhead_data['Starts'] >= 2].sort_values('Win_Rate', ascending=True)
+            # if not spearhead.empty:
+            #     s_row = spearhead.iloc[0]
+            #     n3.warning(
+            #         f"**The Broken Spearhead**\n\n"
+            #         f"**{s_row['player']}** seized the initiative in **{s_row['Starts']}** separate matches, "
+            #         f"yet found no victory in the charge. The best-laid plans often crumble upon contact."
+            #     )
+        
+            # # 4. The Penitent’s Burden
+            # if not leaderboard.empty:
+            #     p_row = leaderboard.iloc[-1]
+            #     n4.error(
+            #         f"**The Penitent’s Burden**\n\n"
+            #         f"**{p_row['player']}** finishes at the bottom of the standings. "
+            #         f"Repentance is found through trial; the next sector awaits your redemption."
+            #     )
 
 
 
@@ -757,6 +735,50 @@ else:
             stats = combined['f'].value_counts().reset_index()
             stats.columns = ['Faction', 'Count']
             fig = px.pie(stats, values='Count', names='Faction', hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
+            st.plotly_chart(fig, use_container_width=True)
+
+                # --- REPORT 5: ROUND-BY-ROUND PERFORMANCE (GROUPED BAR CHART) ---
+        def show_round_averages_chart(df):
+            st.subheader(f"📊 {selected_event} Round Performance")
+            
+            # 1. Identify winner and loser score for every row
+            # (Note: Using awards_event_df ensures 'Not Played' results don't skew the averages)
+            df['Winner_Score'] = df[['p1_score_total', 'p2_score_total']].max(axis=1)
+            df['Loser_Score'] = df[['p1_score_total', 'p2_score_total']].min(axis=1)
+            
+            # 2. Group by round and calculate averages
+            round_stats = df.groupby('round_number').agg({
+                'Winner_Score': 'mean',
+                'Loser_Score': 'mean'
+            }).reset_index()
+            
+            # 3. 'Melt' the data for Plotly (changes columns into rows)
+            melted_df = round_stats.melt(
+                id_vars='round_number', 
+                value_vars=['Winner_Score', 'Loser_Score'],
+                var_name='Result Type', 
+                value_name='Average Score'
+            )
+            
+            # 4. Create the Grouped Bar Chart
+            fig = px.bar(
+                melted_df,
+                x='round_number',
+                y='Average Score',
+                color='Result Type',
+                barmode='group', # Puts bars side-by-side
+                text_auto='.1f', # Shows 1 decimal place on the bars
+                labels={'round_number': 'Round Number', 'Average Score': 'Avg Score'},
+                title=f"Avg Winning vs. Losing Score by Round",
+                color_discrete_map={
+                    'Winner_Score': '#00cc66', # Green for winner
+                    'Loser_Score': '#ff4d4d'    # Red for loser
+                }
+            )
+            
+            # Ensure all 5 rounds show on the X-axis
+            fig.update_layout(xaxis=dict(tickmode='linear', tick0=1, dtick=1))
+            
             st.plotly_chart(fig, use_container_width=True)
 
         def show_allegiance_points_pie(df):
@@ -803,19 +825,22 @@ else:
                     st.divider()
                     show_event_awards(awards_df, ranking_data)
                     st.divider()
+                    show_round_averages_chart(awards_event_df)
+                    st.divider()
                     show_faction_win_rates(event_df)
                     st.divider()
                     show_faction_turnout(event_df)
                     st.divider()
                     show_allegiance_points_pie(event_df)
+        
                 else:
                     st.warning("No valid match data found after filtering out Dropped/Unplayed results.")
         else:
             st.info("No events found in the database.")
         
-        show_leaderboard(raw_df)
-        show_leaderboard(event_df)
-        show_leaderboard(awards_df)
+        # show_leaderboard(raw_df)
+        # show_leaderboard(event_df)
+        # show_leaderboard(awards_df)
     
 
     elif st.session_state.page == "Graphs":
