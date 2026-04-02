@@ -541,37 +541,49 @@ else:
 
         def show_leaderboard(df):
             st.subheader(f"🏆 {selected_event} Rankings")
-            p1_data = df[['display_p1_name', 'p1_score_total', 'display_p2_name']].copy()
-            p1_data.columns = ['player', 'score', 'opponent']
-            p1_data['is_win'] = df['p1_score_total'] > df['p2_score_total']
-
-            p2_data = df[['display_p2_name', 'p2_score_total', 'display_p1_name']].copy()
-            p2_data.columns = ['player', 'score', 'opponent']
-            p2_data['is_win'] = df['p2_score_total'] > df['p1_score_total']
-
-            combined = pd.concat([p1_data, p2_data])
+        
+            # 1. Split the data but KEEP the status for each side
+            p1 = df[['display_p1_name', 'p1_score_total', 'p2_score_total', 'p1_status']].copy()
+            p1.columns = ['player', 'score', 'opp_score', 'status']
+            
+            p2 = df[['display_p2_name', 'p2_score_total', 'p1_score_total', 'p2_status']].copy()
+            p2.columns = ['player', 'score', 'opp_score', 'status']
+        
+            # 2. Combine and THEN filter by status
+            # This ensures if P1 is 'Checked In', their game counts, 
+            # regardless of whether P2 was 'Dropped'
+            combined = pd.concat([p1, p2])
+            combined = combined[combined['status'] == 'Checked In']
+        
+            if combined.empty:
+                st.warning("No games found for checked-in players.")
+                return None
+        
+            # 3. Calculate Win/Loss/Draw
+            combined['is_win'] = combined['score'] > combined['opp_score']
+            
+            # 4. Aggregate
             leaderboard = combined.groupby('player').agg(
                 Played=('player', 'count'),
                 Wins=('is_win', 'sum'),
                 Total_Points=('score', 'sum')
             ).reset_index()
-
+        
+            # 5. Ranking & Display
             leaderboard = leaderboard.sort_values(by=['Wins', 'Total_Points'], ascending=False)
             leaderboard.insert(0, 'Rank', range(1, len(leaderboard) + 1))
-
+        
             st.dataframe(
                 leaderboard,
                 column_config={
                     "Rank": st.column_config.NumberColumn("Rank", format="#%d"),
-                    "player": "Player Name",
-                    "Played": "Games",
-                    "Wins": "Wins ✅",
                     "Total_Points": st.column_config.NumberColumn("Total Points", format="%d pts"),
                 },
                 hide_index=True,
                 use_container_width=True
             )
             return leaderboard
+
 
         def show_event_awards(df, leaderboard):
             st.subheader("🎖️ The Sector Awards")
