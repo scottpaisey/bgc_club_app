@@ -555,7 +555,7 @@ else:
             # ---------------------
         
             # 3. FILTER INDIVIDUALLY: Only keep players who are 'Checked In'
-            # combined = combined[combined['status'] == 'Checked In']
+            combined = combined[combined['status'] == 'Checked In']
         
             if combined.empty:
                 st.warning("No games found for checked-in players.")
