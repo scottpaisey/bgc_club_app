@@ -539,23 +539,41 @@ else:
 
         # --- STEP 1: DEFINE ALL REPORT FUNCTIONS ---
         
-          def show_leaderboard(df):
+        def show_leaderboard(df):
             st.subheader(f"🏆 {selected_event} Rankings")
         
             # 1. Separate Player 1 and Player 2 performances
-            p1 = df[['display_p1_name', 'p1_score_total', 'p2_score_total', 'p1_status']].copy()
-            p1.columns = ['player', 'score', 'opp_score', 'status']
+            p1 = df[['display_p1_name', 'p1_score_total', 'p2_score_total', 'p1_status', 'round_number', 'table_number']].copy()
+            p1.columns = ['player', 'score', 'opp_score', 'status', 'round', 'table']
             
-            p2 = df[['display_p2_name', 'p2_score_total', 'p1_score_total', 'p2_status']].copy()
-            p2.columns = ['player', 'score', 'opp_score', 'status']
+            p2 = df[['display_p2_name', 'p2_score_total', 'p1_score_total', 'p2_status', 'round_number', 'table_number']].copy()
+            p2.columns = ['player', 'score', 'opp_score', 'status', 'round', 'table']
         
             # 2. Combine into one long list
             combined = pd.concat([p1, p2])
         
+            # --- DEBUG SECTION ---
+            # Add a search box in an expander to investigate specific players
+            with st.expander("🔍 Debug: Investigate Player Games"):
+                search_name = st.text_input("Enter Player Name to see their individual game logs:", placeholder="e.g. Kerith B")
+                if search_name:
+                    # We show their data BEFORE the 'Checked In' filter to see if a game is being blocked
+                    player_logs = combined[combined['player'].str.contains(search_name, case=False, na=False)]
+                    st.write(f"Showing all logs found for **{search_name}** (Pre-Filter):")
+                    st.dataframe(player_logs, use_container_width=True)
+                    
+                    # Count logic help
+                    checked_in_count = len(player_logs[player_logs['status'] == 'Checked In'])
+                    st.info(f"Summary for {search_name}: Found {len(player_logs)} total match rows. {checked_in_count} are marked 'Checked In'.")
+            # ---------------------
+        
             # 3. FILTER INDIVIDUALLY: Only keep players who are 'Checked In'
-            # If P1 is 'Checked In' but P2 is 'Dropped', P1 stays in the list!
-            # combined = combined[combined['status'] == 'Checked In']
-            combined = combined[combined['status'] != 'Dropped']        
+            combined = combined[combined['status'] == 'Checked In']
+        
+            if combined.empty:
+                st.warning("No games found for checked-in players.")
+                return None
+        
             # 4. Calculate Wins
             combined['is_win'] = combined['score'] > combined['opp_score']
             
@@ -571,12 +589,8 @@ else:
             leaderboard.insert(0, 'Rank', range(1, len(leaderboard) + 1))
         
             st.dataframe(leaderboard, hide_index=True, use_container_width=True)
-
-                        # Temporary debug inside show_leaderboard
-            st.write("Debug: All filtered games for 'Kerith B':", 
-                     combined[combined['player'] == "Kerith B"])
-
             return leaderboard
+
 
 
         def show_event_awards(df, leaderboard):
