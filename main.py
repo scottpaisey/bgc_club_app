@@ -651,8 +651,8 @@ else:
                     # Loop through top 3 and display metrics
                     for rank, (_, row) in enumerate(top_3.iterrows()):
                         st.metric(
-                            label=f"{medals[rank]}", 
-                            value=row[player], 
+                            label=f"{medals['rank']}", 
+                            value=row['player'], 
                             delta=f"{int(row['Total_VP'])} VP",
                             delta_color="off" # Keeps the VP count neutral
                         )
