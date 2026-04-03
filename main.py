@@ -107,10 +107,10 @@ else:
         st.session_state.page = None
         collapse_sidebar()
         st.rerun()
-    if st.sidebar.button("Log Games"):
-        st.session_state.page = "Log Games"
-        collapse_sidebar()
-        st.rerun()
+    # if st.sidebar.button("Log Games"):
+    #     st.session_state.page = "Log Games"
+    #     collapse_sidebar()
+    #     st.rerun()
     if st.sidebar.button("Events"):
         st.session_state.page = "Events"
         collapse_sidebar()
