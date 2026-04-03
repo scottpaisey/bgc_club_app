@@ -633,7 +633,7 @@ else:
             all_perf = pd.concat([p1, p2])
             
             # 2. Aggregate stats
-            commander_stats = all_perf.groupby(['allg', 'player']).agg(Total_VP=(score, 'sum')).reset_index()
+            commander_stats = all_perf.groupby(['allg', 'player']).agg(Total_VP=('score', 'sum')).reset_index()
             
             # 3. Create columns for each Allegiance
             allg_list = sorted(all_perf['allg'].unique())
