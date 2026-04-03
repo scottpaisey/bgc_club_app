@@ -127,10 +127,10 @@ else:
     #     st.session_state.page = "Graphs"
     #     collapse_sidebar()
     #     st.rerun()
-    # if st.sidebar.button("Personal Stats"):
-    #     st.session_state.page = "Personal Stats"
-    #     collapse_sidebar()
-    #     st.rerun()
+    if st.sidebar.button("Personal Stats"):
+        st.session_state.page = "Personal Stats"
+        collapse_sidebar()
+        st.rerun()
     if st.sidebar.button("Log Out"):
         supabase.auth.sign_out()
         # Clear session state completely to be safe
@@ -459,7 +459,6 @@ else:
 
             c1, c2 = st.columns(2)
 
-
             def clean_id(val):
                 # If the value is 'krystal' or any other name string, return None
                 if isinstance(val, str) and len(val) < 30:
@@ -604,76 +603,66 @@ else:
             
             st.divider()
         
-            # --- NEW: SECTOR COMMANDERS (Top Performer per Allegiance) ---
+            # # --- NEW: SECTOR COMMANDERS (Top Performer per Allegiance) ---
+            # st.write("### 🛡️ Sector Commanders")
+            # # We unpivot to find which player performed best for each allegiance
+            # p1 = df[['display_p1_name', 'p1_allegiance', 'p1_score_total']].rename(columns={'display_p1_name':'player', 'p1_allegiance':'allg', 'p1_score_total':'score'})
+            # p2 = df[['display_p2_name', 'p2_allegiance', 'p2_score_total']].rename(columns={'display_p2_name':'player', 'p2_allegiance':'allg', 'p2_score_total':'score'})
+            # all_perf = pd.concat([p1, p2])
+            
+            # # Group by Allegiance and Player to find the best in each category
+            # commander_stats = all_perf.groupby(['allg', 'player']).agg(Total_VP=('score', 'sum'), Games=('score', 'count')).reset_index()
+            
+            # # Create columns for the top 3 (or however many allegiances you have)
+            # allg_list = sorted(all_perf['allg'].unique())
+            # cols = st.columns(len(allg_list))
+            
+            # for i, allg in enumerate(allg_list):
+            #     # Find the player with highest VP in this allegiance
+            #     top_in_allg = commander_stats[commander_stats['allg'] == allg].sort_values('Total_VP', ascending=False).iloc[0]
+            #     cols[i].metric(f"🚩 {allg}", top_in_allg['player'], f"{top_in_allg['Total_VP']} VP")
+        
+            # st.divider()
+
+            # --- NEW: SECTOR COMMANDERS (Top 3 per Allegiance) ---
             st.write("### 🛡️ Sector Commanders")
-            # We unpivot to find which player performed best for each allegiance
-            p1 = df[['display_p1_name', 'p1_allegiance', 'p1_score_total']].rename(columns={'display_p1_name':'player', 'p1_allegiance':'allg', 'p1_score_total':'score'})
-            p2 = df[['display_p2_name', 'p2_allegiance', 'p2_score_total']].rename(columns={'display_p2_name':'player', 'p2_allegiance':'allg', 'p2_score_total':'score'})
+            
+            # 1. Unpivot/Melt to standardise columns
+            p1 = df[[display_p1_name, p1_allegiance, p1_score_total]].rename(columns={display_p1_name: player, p1_allegiance: 'allg', p1_score_total: score})
+            p2 = df[[display_p2_name, p2_allegiance, p2_score_total]].rename(columns={display_p2_name: player, p2_allegiance: 'allg', p2_score_total: score})
             all_perf = pd.concat([p1, p2])
             
-            # Group by Allegiance and Player to find the best in each category
-            commander_stats = all_perf.groupby(['allg', 'player']).agg(Total_VP=('score', 'sum'), Games=('score', 'count')).reset_index()
+            # 2. Aggregate stats
+            commander_stats = all_perf.groupby(['allg', player]).agg(Total_VP=(score, 'sum')).reset_index()
             
-            # Create columns for the top 3 (or however many allegiances you have)
+            # 3. Create columns for each Allegiance
             allg_list = sorted(all_perf['allg'].unique())
             cols = st.columns(len(allg_list))
             
-            for i, allg in enumerate(allg_list):
-                # Find the player with highest VP in this allegiance
-                top_in_allg = commander_stats[commander_stats['allg'] == allg].sort_values('Total_VP', ascending=False).iloc[0]
-                cols[i].metric(f"🚩 {allg}", top_in_allg['player'], f"{top_in_allg['Total_VP']} VP")
-        
+            medals = ["🥇 Gold", "🥈 Silver", "🥉 Bronze"]
+            
+            for i, current_allg in enumerate(allg_list):
+                with cols[i]:
+                    st.subheader(f"🚩 {current_allg}")
+                    
+                    # Get top 3 for this specific allegiance
+                    top_3 = commander_stats[commander_stats['allg'] == current_allg].sort_values('Total_VP', ascending=False).head(3)
+                    
+                    # Loop through top 3 and display metrics
+                    for rank, (_, row) in enumerate(top_3.iterrows()):
+                        st.metric(
+                            label=f"{medals[rank]}", 
+                            value=row[player], 
+                            delta=f"{int(row['Total_VP'])} VP",
+                            delta_color="off" # Keeps the VP count neutral
+                        )
+            
             st.divider()
-        
-            # # --- NARRATIVE AWARDS ---
-            # st.write("### 🕵️ Intelligence Reports")
-            # n1, n2, n3 = st.columns(3)
-        
-            # # 1. Tzeentch’s Plaything: High VP, Low Wins
-            # plaything = leaderboard[leaderboard['Wins'] < 2].sort_values('Total_Points', ascending=False)
-            # if not plaything.empty:
-            #     n1.info(f"**Tzeentch’s Plaything**\n\n**{plaything.iloc[0]['player']}** ({plaything.iloc[0]['Total_Points']} VP)")
-        
-            # # 2. The Eternal Martyr: Most losses, High average
-            # martyr = leaderboard.sort_values(['Wins', 'Avg_Score'], ascending=[True, False])
-            # n2.info(f"**The Eternal Martyr**\n\n**{martyr.iloc[0]['player']}** ({martyr.iloc[0]['Avg_Score']} Avg)")
-        
-            # # 3. The Broken Spearhead: Most "Went First" with lowest win rate
-            # # We calculate 'Went First' counts from the raw match data
-            # wf_counts = df['went_first'].value_counts().reset_index()
-            # wf_counts.columns = ['player', 'Starts']
-            # # Join to leaderboard to check win rates
-            # spearhead_data = pd.merge(wf_counts, leaderboard, on='player')
-            # spearhead_data['Win_Rate'] = spearhead_data['Wins'] / spearhead_data['Played']
-            # # Filter for people who went first at least twice, then sort by win rate ascending
-            # spearhead = spearhead_data[spearhead_data['Starts'] >= 2].sort_values('Win_Rate', ascending=True)
-            # if not spearhead.empty:
-            #     n3.info(f"**The Broken Spearhead**\n\n**{spearhead.iloc[0]['player']}** (Went first {spearhead.iloc[0]['Starts']} times)")
 
+        
             # --- NARRATIVE AWARDS ---
             st.write("### 🕵️ Intelligence Reports")
             n1, n2, n3 = st.columns(3)
-        
-            # # 1. Tzeentch’s Plaything: High VP, Low Wins
-            # plaything = leaderboard[leaderboard['Wins'] < 2].sort_values('Total_Points', ascending=False)
-            # if not plaything.empty:
-            #     n1.info(f"**Tzeentch’s Plaything**\n\n**{plaything.iloc[0]['player']}** ({plaything.iloc[0]['Total_Points']} VP)")
-        
-            # # 2. The Eternal Martyr: Most losses, High average
-            # martyr = leaderboard.sort_values(['Wins', 'Avg_Score'], ascending=[True, False])
-            # n2.info(f"**The Eternal Martyr**\n\n**{martyr.iloc[0]['player']}** ({martyr.iloc[0]['Avg_Score']} Avg)")
-        
-            # # 3. The Broken Spearhead: Most "Went First" with lowest win rate
-            # # We calculate 'Went First' counts from the raw match data
-            # wf_counts = df['went_first'].value_counts().reset_index()
-            # wf_counts.columns = ['player', 'Starts']
-            # # Join to leaderboard to check win rates
-            # spearhead_data = pd.merge(wf_counts, leaderboard, on='player')
-            # spearhead_data['Win_Rate'] = spearhead_data['Wins'] / spearhead_data['Played']
-            # # Filter for people who went first at least twice, then sort by win rate ascending
-            # spearhead = spearhead_data[spearhead_data['Starts'] >= 2].sort_values('Win_Rate', ascending=True)
-            # if not spearhead.empty:
-            #     n3.info(f"**The Broken Spearhead**\n\n**{spearhead.iloc[0]['player']}** (Went first {spearhead.iloc[0]['Starts']} times)")
         
             # 1. Tzeentch’s Plaything
             plaything = leaderboard[leaderboard['Wins'] < 2].sort_values('Total_Points', ascending=False)
@@ -711,21 +700,20 @@ else:
                     f"yet found no victory in the charge. The best-laid plans often crumble upon contact."
                 )
 
-        
-        # def show_faction_win_rates(df):
-        #     st.subheader(f"📊 {selected_event} Faction Meta")
-        #     p1_data = df[['p1_faction', 'p1_score_total', 'p2_score_total']].copy()
-        #     p1_data.columns = ['faction', 'score', 'opp_score']
-        #     p2_data = df[['p2_faction', 'p2_score_total', 'p1_score_total']].copy()
-        #     p2_data.columns = ['faction', 'score', 'opp_score']
-        #     combined = pd.concat([p1_data, p2_data])
-        #     combined['is_win'] = combined['score'] > combined['opp_score']
-        #     stats = combined.groupby('faction').agg(Total=('faction', 'count'), Wins=('is_win', 'sum')).reset_index()
-        #     stats['Win_Rate'] = (stats['Wins'] / stats['Total'] * 100).round(1)
-        #     stats = stats.sort_values(by='Win_Rate', ascending=False)
-        #     fig = px.bar(stats, x='faction', y='Win_Rate', text='Win_Rate', color='Win_Rate', color_continuous_scale='RdYlGn', height=400)
-        #     fig.update_layout(yaxis_range=[0, 110])
-        #     st.plotly_chart(fig, use_container_width=True)
+        def show_faction_win_rates(df):
+            st.subheader(f"📊 {selected_event} Faction Meta")
+            p1_data = df[['p1_faction', 'p1_score_total', 'p2_score_total']].copy()
+            p1_data.columns = ['faction', 'score', 'opp_score']
+            p2_data = df[['p2_faction', 'p2_score_total', 'p1_score_total']].copy()
+            p2_data.columns = ['faction', 'score', 'opp_score']
+            combined = pd.concat([p1_data, p2_data])
+            combined['is_win'] = combined['score'] > combined['opp_score']
+            stats = combined.groupby('faction').agg(Total=('faction', 'count'), Wins=('is_win', 'sum')).reset_index()
+            stats['Win_Rate'] = (stats['Wins'] / stats['Total'] * 100).round(1)
+            stats = stats.sort_values(by='Win_Rate', ascending=False)
+            fig = px.bar(stats, x='faction', y='Win_Rate', text='Win_Rate', color='Win_Rate', color_continuous_scale='RdYlGn', height=400)
+            fig.update_layout(yaxis_range=[0, 110])
+            st.plotly_chart(fig, use_container_width=True)
 
         def show_faction_turnout(df):
             st.subheader(f"🍕 {selected_event} Faction Turnout")
@@ -825,8 +813,8 @@ else:
                     st.divider()
                     show_round_averages_chart(awards_df)
                     st.divider()
-                    # show_faction_win_rates(event_df)
-                    # st.divider()
+                    show_faction_win_rates(event_df)
+                    st.divider()
                     show_faction_turnout(event_df)
                     st.divider()
                     show_allegiance_points_pie(event_df)
@@ -836,11 +824,6 @@ else:
         else:
             st.info("No events found in the database.")
         
-        # show_leaderboard(raw_df)
-        # show_leaderboard(event_df)
-        # show_leaderboard(awards_df)
-    
-
     elif st.session_state.page == "Graphs":
         st.header("Graphs")
         st.divider()
