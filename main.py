@@ -902,12 +902,12 @@ else:
             )
 
     # elif st.session_state.page == "Personal Stats":
-        st.header("👤 Your Personal Stats")
+        st.header("👤 Your Career Dashboard")
         st.divider()
         
         current_user = discord_name
 
-        # 1. Fetch ALL matches for this player
+        # 1. Fetch ALL matches for this player (no limit)
         res = supabase.table("match_results") \
             .select("*") \
             .or_(f"display_p1_name.eq.{current_user},display_p2_name.eq.{current_user}") \
@@ -916,79 +916,84 @@ else:
         if res.data:
             full_df = pd.DataFrame(res.data)
 
-            # 2. "Standardise" the data so you are always 'User' and opponent is 'Opp'
+            # 2. Standardise: 'User' is always you, 'Opp' is always the other person
             p1_mask = full_df['display_p1_name'] == current_user
             
-            # Split and Rename columns to be 'User' centric
             p1_side = full_df[p1_mask].copy()
             p1_side.columns = [c.replace('p1_', 'user_').replace('p2_', 'opp_') for c in p1_side.columns]
             
             p2_side = full_df[~p1_mask].copy()
+            # Rename p1 columns to opp and p2 to user
             p2_side.columns = [c.replace('p1_', 'opp_').replace('p2_', 'user_') for c in p2_side.columns]
 
             user_df = pd.concat([p1_side, p2_side])
-            
-            # Helper columns for calculations
             user_df['is_win'] = user_df['user_score_total'] > user_df['opp_score_total']
-            user_df['is_draw'] = user_df['user_score_total'] == user_df['opp_score_total']
             user_df['went_first_flag'] = user_df['went_first'] == current_user
 
-            # 3. THREE SELECTION BUTTONS (Radio Style)
-            st.write("### 🛡️ Choose your perspective")
-            view_type = st.segmented_control(
-                "View Stats By:", 
-                ["System", "Allegiance", "Faction"], 
-                default="System"
-            )
-            
-            # Map selection to the correct column
-            col_map = {"System": "system_name", "Allegiance": "user_allegiance", "Faction": "user_faction"}
-            target_col = col_map[view_type]
-            
-            # Filter the dropdown to only show things THIS player has actually played
-            player_options = sorted(user_df[target_col].unique().tolist())
-            selection = st.selectbox(f"Select a {view_type} from your history:", player_options)
+            # 3. THREE DROPDOWNS (Cascading)
+            st.write("### 🔍 Filter Your History")
+            c1, c2, c3 = st.columns(3)
 
-            # 4. Filter and Calculate Stats
-            stat_df = user_df[user_df[target_col] == selection]
+            # Dropdown 1: System
+            sys_options = sorted(user_df['system_name'].unique().tolist())
+            sel_sys = c1.selectbox("Select System", ["All Systems"] + sys_options)
             
-            total_games = len(stat_df)
-            wins = stat_df['is_win'].sum()
+            df_filtered = user_df.copy()
+            if sel_sys != "All Systems":
+                df_filtered = df_filtered[df_filtered['system_name'] == sel_sys]
+
+            # Dropdown 2: Allegiance (Filtered by System)
+            allg_options = sorted(df_filtered['user_allegiance'].unique().tolist())
+            sel_allg = c2.selectbox("Select Allegiance", ["All Allegiances"] + allg_options)
+            
+            if sel_allg != "All Allegiances":
+                df_filtered = df_filtered[df_filtered['user_allegiance'] == sel_allg]
+
+            # Dropdown 3: Faction (Filtered by Allegiance)
+            fac_options = sorted(df_filtered['user_faction'].unique().tolist())
+            sel_fac = c3.selectbox("Select Faction", ["All Factions"] + fac_options)
+            
+            if sel_fac != "All Factions":
+                df_filtered = df_filtered[df_filtered['user_faction'] == sel_fac]
+
+            # 4. Calculate Stats for the final filtered selection
+            total_games = len(df_filtered)
+            wins = df_filtered['is_win'].sum()
             win_rate = (wins / total_games * 100) if total_games > 0 else 0
-            avg_score = stat_df['user_score_total'].mean()
-
-            # Win Rate when Going First
-            first_df = stat_df[stat_df['went_first_flag'] == True]
+            avg_score = df_filtered['user_score_total'].mean() if total_games > 0 else 0
+            
+            first_df = df_filtered[df_filtered['went_first_flag'] == True]
             first_win_rate = (first_df['is_win'].sum() / len(first_df) * 100) if len(first_df) > 0 else 0
 
             # 5. Display Metrics
-            st.subheader(f"📊 {selection} Statistics")
+            st.subheader(f"📊 Stats for: {sel_fac if sel_fac != 'All Factions' else sel_allg if sel_allg != 'All Allegiances' else sel_sys}")
             m1, m2, m3, m4 = st.columns(4)
             m1.metric("Games Played", total_games)
             m2.metric("Win Rate", f"{win_rate:.1f}%")
             m3.metric("Avg Score", f"{avg_score:.1f}")
-            m4.metric("Win% (Going First)", f"{first_win_rate:.1f}%")
+            m4.metric("Win% (Went First)", f"{first_win_rate:.1f}%")
 
             st.divider()
 
-            # 6. Detailed Match History for the selection
-            st.write(f"### 📜 Recent {selection} Matches")
+            # 6. History Table
+            st.write("### 📜 Match History")
             st.dataframe(
-                stat_df.sort_values('game_date', ascending=False),
-                column_order=("game_date", "display_p1_name", "user_score_total", "display_p2_name", "opp_score_total", "went_first", "event_name"),
+                df_filtered.sort_values('game_date', ascending=False),
+                column_order=("game_date", "user_faction", "user_score_total", "opp_score_total", "opp_faction", "display_opp_name", "event_name"),
                 column_config={
                     "game_date": "Date",
-                    "display_p1_name": "Player 1",
-                    "display_p2_name": "Player 2",
+                    "user_faction": "Your Faction",
                     "user_score_total": "Your Score",
                     "opp_score_total": "Opp Score",
-                    "went_first": "Went First",
+                    "opp_faction": "Opp Faction",
+                    "display_opp_name": "Opponent",
                     "event_name": "Event"
                 },
                 use_container_width=True,
                 hide_index=True
             )
         else:
-            st.info("No match history found. Get some games logged!")
+            st.info("No match history found. Time to roll some dice!")
+
 
 
