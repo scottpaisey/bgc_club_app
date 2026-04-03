@@ -67,11 +67,19 @@ if "code" in st.query_params:
     except Exception as e:
         st.error(f"Login Sync Failed: {e}")
 
-# #3. PERSISTENT USER SYNC
-#if "user" not in st.session_state:
-    #user_resp = supabase.auth.get_user()
-    #if user_resp and user_resp.user:
-        #st.session_state.user = user_resp.user
+# # scottpaisey 03/04/2026
+# # DEBUG: comment this out if the sign in has issues !!!
+# # 3. PERSISTENT USER SYNC
+# if "user" in st.session_state and "user_role" not in st.session_state:
+#     try:
+#         user_id = st.session_state.user.id
+#         profile_res = supabase.table("profiles").select("role").eq("id", user_id).single().execute()
+#         if profile_res.data:
+#             st.session_state.user_role = profile_res.data['role']
+#         else:
+#             st.session_state.user_role = "member" # Fallback
+#     except Exception as e:
+#         st.session_state.user_role = "member"
 
 
 # 4. LOGIN FUNCTION
