@@ -212,8 +212,6 @@ else:
         st.write("**Your Details**")
         # Extract the name from Discord metadata
         p1_name = st.text_input("Your Discord Name*", value=discord_name, key="p1_username", disabled=True)
-        # p1_last = st.text_input("Surname", key="p1_l")
-        # p1_known = st.text_input("Known As", key="p1_k")
         # 1. Allegiance Dropdown
         p1_all_df = p1_df_system_factions[p1_df_system_factions['short_name'] == '40K']
         p1_all = st.selectbox("Your Allegiance", p1_all_df['allegiance'].unique(), index=None,
@@ -399,6 +397,14 @@ else:
                         p1_br = 10
                     else:
                         p1_br = 0
+                    if st.toggle("Slain Enemy Warlord?*", key="p1_killed_warlord"):
+                        p1_killed_warlord = true
+                    else:
+                        p1_killed_warlord = false
+                    if st.toggle("Tabled Opponent?*", key="p1_tabled_opponent"):
+                        p1_tabled_opponent = true
+                    else:
+                        p1_tabled_opponent = false
                 with col4:
                     st.subheader(f"{p2_name}")
                     st.write(f"**{p2_fac}**")
@@ -409,14 +415,23 @@ else:
                         p2_br = 10
                     else:
                         p2_br = 0
+                    if st.toggle("Slain Enemy Warlord?*", key="p2_killed_warlord"):
+                        p2_killed_warlord = true
+                    else:
+                        p2_killed_warlord = false
+                    if st.toggle("Tabled Opponent?*", key="p2_tabled_opponent"):
+                        p2_tabled_opponent = true
+                    else:
+                        p2_tabled_opponent = false
+                    
 
                 # Use the form submit button to move to confirmation
                 submit_scores = st.form_submit_button("Review Results")
 
                 if submit_scores:
                     st.session_state.temp_scores = {
-                        "p1_pri": p1_pri, "p1_sec": p1_sec, "p1_br": p1_br,
-                        "p2_pri": p2_pri, "p2_sec": p2_sec, "p2_br": p2_br
+                        "p1_pri": p1_pri, "p1_sec": p1_sec, "p1_br": p1_br, "p1_killed_warlord": p1_killed_warlord, "p1_tabled_opponent": p1_tabled_opponent,
+                        "p2_pri": p2_pri, "p2_sec": p2_sec, "p2_br": p2_br, "p2_killed_warlord", p2_killed_warlord, "p2_tabled_opponent": p2_tabled_opponent
                     }
                     st.session_state.confirm_submit = True
                     st.rerun()
@@ -500,8 +515,12 @@ else:
                         "defender_id": clean_id(setup['defender_id']),
                         "is_draw": is_draw,
                         # "played_at": ,
-                        "recorded_by":  setup['p1_id']
+                        "recorded_by":  setup['p1_id'],
                         # "club_id": ,
+                        "p1_killed_warlord": scores['p1_killed_warlord'],
+                        "p2_killed_warlord": scores['p2_killed_warlord'],
+                        "p1_tabled_opponent": scores['p1_tabled_opponent'],
+                        "p2_tabled_opponent": scores['p2_tabled_opponent'],
                     }
 
                 # --- DEBUG MONITOR ---
