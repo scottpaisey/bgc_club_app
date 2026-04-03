@@ -901,6 +901,91 @@ else:
                 hide_index=True
             )
 
+    # elif st.session_state.page == "Personal Stats":
+        st.header("👤 Your Personal Stats")
+        st.divider()
+        
+        current_user = discord_name
+
+        # 1. Fetch ALL your matches (remove .limit(10) to get accurate career stats)
+        res = supabase.table("match_results") \
+            .select("*") \
+            .or_(f"display_p1_name.eq.{current_user},display_p2_name.eq.{current_user}") \
+            .execute()
+
+        if res.data:
+            full_df = pd.DataFrame(res.data)
+
+            # 2. Standardise the data: "Which player am I?"
+            # This creates a 'user_df' where 'Your Score' is always your score
+            p1_mask = full_df['display_p1_name'] == current_user
+            
+            p1_side = full_df[p1_mask].copy()
+            p1_side.columns = [c.replace('p1_', 'user_').replace('p2_', 'opp_') for c in p1_side.columns]
+            p1_side['went_first_flag'] = p1_side['went_first'] == current_user
+
+            p2_side = full_df[~p1_mask].copy()
+            # Flip columns so P2 data becomes 'user_' data
+            p2_side.columns = [c.replace('p1_', 'opp_').replace('p2_', 'user_') for c in p2_side.columns]
+            p2_side['went_first_flag'] = p2_side['went_first'] == current_user
+
+            user_df = pd.concat([p1_side, p2_side])
+            user_df['is_win'] = user_df['user_score_total'] > user_df['opp_score_total']
+            user_df['is_draw'] = user_df['user_score_total'] == user_df['opp_score_total']
+
+            # 3. Filters: Radio Buttons
+            st.write("### 🔍 Filter Your Performance")
+            filter_type = st.radio("Group stats by:", ["System", "Allegiance", "Faction"], horizontal=True)
+            
+            col_map = {"System": "system_name", "Allegiance": "user_allegiance", "Faction": "user_faction"}
+            target_col = col_map[filter_type]
+            
+            # Get unique values for the selection based on your chosen radio
+            options = sorted(user_df[target_col].unique().tolist())
+            selection = st.selectbox(f"Select {filter_type}", options)
+
+            # 4. Calculate Filtered Stats
+            filtered_df = user_df[user_df[target_col] == selection]
+            
+            total_games = len(filtered_df)
+            wins = filtered_df['is_win'].sum()
+            draws = filtered_df['is_draw'].sum()
+            win_rate = (wins / total_games * 100) if total_games > 0 else 0
+            avg_score = filtered_df['user_score_total'].mean()
+
+            # Going First Stats
+            first_df = filtered_df[filtered_df['went_first_flag'] == True]
+            first_win_rate = (first_df['is_win'].sum() / len(first_df) * 100) if len(first_df) > 0 else 0
+
+            # 5. Display Metrics
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("Games Played", total_games)
+            m2.metric("Win Rate", f"{win_rate:.1f}%")
+            m3.metric("Avg Score", f"{avg_score:.1f}")
+            m4.metric("Win% (Going First)", f"{first_win_rate:.1f}%")
+
+            st.divider()
+
+            # 6. Detailed Match Table
+            st.subheader(f"Recent Games as {selection}")
+            st.dataframe(
+                filtered_df.sort_values('game_date', ascending=False),
+                column_order=("game_date", "display_p1_name", "user_score_total", "display_p2_name", "opp_score_total", "went_first"),
+                column_config={
+                    "game_date": "Date",
+                    "display_p1_name": "Player 1",
+                    "display_p2_name": "Player 2",
+                    "user_score_total": "Your Score",
+                    "opp_score_total": "Opp Score",
+                    "went_first": "Went First"
+                },
+                use_container_width=True,
+                hide_index=True
+            )
+        else:
+            st.info("No match history found. Get some games logged!")
+
+
         else:
             st.info("You haven't logged any games yet. Get to the table!")
 
