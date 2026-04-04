@@ -1,9 +1,7 @@
 import streamlit as st
-# import supabase
 from supabase import create_client, Client
 from streamlit_js_eval import streamlit_js_eval
 from dotenv import load_dotenv
-# from pandas import DataFrame
 import pandas as pd
 import plotly.express as px
 import time
@@ -69,11 +67,19 @@ if "code" in st.query_params:
     except Exception as e:
         st.error(f"Login Sync Failed: {e}")
 
-# #3. PERSISTENT USER SYNC
-#if "user" not in st.session_state:
-    #user_resp = supabase.auth.get_user()
-    #if user_resp and user_resp.user:
-        #st.session_state.user = user_resp.user
+# # scottpaisey 03/04/2026
+# # DEBUG: comment this out if the sign in has issues !!!
+# # 3. PERSISTENT USER SYNC
+# if "user" in st.session_state and "user_role" not in st.session_state:
+#     try:
+#         user_id = st.session_state.user.id
+#         profile_res = supabase.table("profiles").select("role").eq("id", user_id).single().execute()
+#         if profile_res.data:
+#             st.session_state.user_role = profile_res.data['role']
+#         else:
+#             st.session_state.user_role = "member" # Fallback
+#     except Exception as e:
+#         st.session_state.user_role = "member"
 
 
 # 4. LOGIN FUNCTION
@@ -117,18 +123,14 @@ else:
         st.session_state.page = "Events"
         collapse_sidebar()
         st.rerun()
-    if st.sidebar.button("Graphs"):
-        st.session_state.page = "Graphs"
-        collapse_sidebar()
-        st.rerun()
+    # if st.sidebar.button("Graphs"):
+    #     st.session_state.page = "Graphs"
+    #     collapse_sidebar()
+    #     st.rerun()
     if st.sidebar.button("Personal Stats"):
         st.session_state.page = "Personal Stats"
         collapse_sidebar()
         st.rerun()
-    #if st.sidebar.button("Log Out"):
-        #supabase.auth.sign_out()
-        #del st.session_state.user
-        #st.rerun()
     if st.sidebar.button("Log Out"):
         supabase.auth.sign_out()
         # Clear session state completely to be safe
@@ -147,7 +149,7 @@ else:
         st.write(f"Most recent matches logged")
 
         # Fetch from your new view
-        res = supabase.table("match_results").select("*").order("game_date", desc=True).limit(10).execute()
+        res = supabase.table("match_results").select("*").order("game_date", desc=False).limit(10).execute()
         if res.data:
             recent_df = pd.DataFrame(res.data)
             st.subheader("Latest 10 Battle Reports")
@@ -209,9 +211,7 @@ else:
         # mission_pack = st.selectbox(st.selectbox('Mission Pack',['Strike Force (2k)', 'Incursion (1k)', 'Combat Partol'], index=None, placeholder="Choose...")
         st.write("**Your Details**")
         # Extract the name from Discord metadata
-        p1_name = st.text_input("Your Discord Name*", value=discord_name, key="p1_username")
-        # p1_last = st.text_input("Surname", key="p1_l")
-        # p1_known = st.text_input("Known As", key="p1_k")
+        p1_name = st.text_input("Your Discord Name*", value=discord_name, key="p1_username", disabled=True)
         # 1. Allegiance Dropdown
         p1_all_df = p1_df_system_factions[p1_df_system_factions['short_name'] == '40K']
         p1_all = st.selectbox("Your Allegiance", p1_all_df['allegiance'].unique(), index=None,
@@ -397,6 +397,14 @@ else:
                         p1_br = 10
                     else:
                         p1_br = 0
+                    if st.toggle("Slain Enemy Warlord?*", key="p1_killed_warlord"):
+                        p1_killed_warlord = True
+                    else:
+                        p1_killed_warlord = False
+                    if st.toggle("Tabled Opponent?*", key="p1_tabled_opponent"):
+                        p1_tabled_opponent = True
+                    else:
+                        p1_tabled_opponent = False
                 with col4:
                     st.subheader(f"{p2_name}")
                     st.write(f"**{p2_fac}**")
@@ -407,14 +415,23 @@ else:
                         p2_br = 10
                     else:
                         p2_br = 0
+                    if st.toggle("Slain Enemy Warlord?*", key="p2_killed_warlord"):
+                        p2_killed_warlord = True
+                    else:
+                        p2_killed_warlord = False
+                    if st.toggle("Tabled Opponent?*", key="p2_tabled_opponent"):
+                        p2_tabled_opponent = True
+                    else:
+                        p2_tabled_opponent = False
+                    
 
                 # Use the form submit button to move to confirmation
                 submit_scores = st.form_submit_button("Review Results")
 
                 if submit_scores:
                     st.session_state.temp_scores = {
-                        "p1_pri": p1_pri, "p1_sec": p1_sec, "p1_br": p1_br,
-                        "p2_pri": p2_pri, "p2_sec": p2_sec, "p2_br": p2_br
+                        "p1_pri": p1_pri, "p1_sec": p1_sec, "p1_br": p1_br, "p1_killed_warlord": p1_killed_warlord, "p1_tabled_opponent": p1_tabled_opponent,
+                        "p2_pri": p2_pri, "p2_sec": p2_sec, "p2_br": p2_br, "p2_killed_warlord": p2_killed_warlord, "p2_tabled_opponent": p2_tabled_opponent
                     }
                     st.session_state.confirm_submit = True
                     st.rerun()
@@ -457,7 +474,6 @@ else:
 
             c1, c2 = st.columns(2)
 
-
             def clean_id(val):
                 # If the value is 'krystal' or any other name string, return None
                 if isinstance(val, str) and len(val) < 30:
@@ -499,8 +515,12 @@ else:
                         "defender_id": clean_id(setup['defender_id']),
                         "is_draw": is_draw,
                         # "played_at": ,
-                        "recorded_by":  setup['p1_id']
+                        "recorded_by":  setup['p1_id'],
                         # "club_id": ,
+                        "p1_killed_warlord": scores['p1_killed_warlord'],
+                        "p2_killed_warlord": scores['p2_killed_warlord'],
+                        "p1_tabled_opponent": scores['p1_tabled_opponent'],
+                        "p2_tabled_opponent": scores['p2_tabled_opponent'],
                     }
 
                 # --- DEBUG MONITOR ---
@@ -576,36 +596,141 @@ else:
         def show_event_awards(df, leaderboard):
             st.subheader("🎖️ The Sector Awards")
             
-            # Helper to safely calculate averages
+            # --- PRE-CALCULATIONS ---
             leaderboard['Avg_Score'] = (leaderboard['Total_Points'] / leaderboard['Played']).round(1)
             
-            # --- 1. Warmaster & Penitent ---
+            # 1. Warmaster & Penitent
             warmaster = leaderboard.iloc[0]['player']
             penitent = leaderboard.iloc[-1]['player']
             
-            # --- 2. Master of the Tactica ---
+            # 2. Master of the Tactica
             top_tactician = leaderboard.sort_values('Avg_Score', ascending=False).iloc[0]
             
-            # --- 3. Exterminatus Protocol (Max Margin) ---
-            max_mar_row = df.loc[df[['p1_score_mar', 'p2_score_mar']].max(axis=1).idxmax()]
+            # 3. Exterminatus Protocol (Max Margin)
+            max_idx = df[['p1_score_mar', 'p2_score_mar']].max(axis=1).idxmax()
+            max_mar_row = df.loc[max_idx]
             if max_mar_row['p1_score_mar'] > max_mar_row['p2_score_mar']:
                 ex_player, max_mar = max_mar_row['display_p1_name'], max_mar_row['p1_score_mar']
             else:
                 ex_player, max_mar = max_mar_row['display_p2_name'], max_mar_row['p2_score_mar']
         
+            # --- TOP ROW METRICS ---
             col1, col2, col3 = st.columns(3)
             col1.metric("⚔️ Warmaster", warmaster, "1st Place")
             col2.metric("📜 Master of Tactica", top_tactician['player'], f"{top_tactician['Avg_Score']} Avg")
             col3.metric("💥 Exterminatus", ex_player, f"+{max_mar} Margin")
             
             st.divider()
+        
+            # # --- NEW: SECTOR COMMANDERS (Top Performer per Allegiance) ---
+            # st.write("### 🛡️ Sector Commanders")
+            # # We unpivot to find which player performed best for each allegiance
+            # p1 = df[['display_p1_name', 'p1_allegiance', 'p1_score_total']].rename(columns={'display_p1_name':'player', 'p1_allegiance':'allg', 'p1_score_total':'score'})
+            # p2 = df[['display_p2_name', 'p2_allegiance', 'p2_score_total']].rename(columns={'display_p2_name':'player', 'p2_allegiance':'allg', 'p2_score_total':'score'})
+            # all_perf = pd.concat([p1, p2])
+            
+            # # Group by Allegiance and Player to find the best in each category
+            # commander_stats = all_perf.groupby(['allg', 'player']).agg(Total_VP=('score', 'sum'), Games=('score', 'count')).reset_index()
+            
+            # # Create columns for the top 3 (or however many allegiances you have)
+            # allg_list = sorted(all_perf['allg'].unique())
+            # cols = st.columns(len(allg_list))
+            
+            # for i, allg in enumerate(allg_list):
+            #     # Find the player with highest VP in this allegiance
+            #     top_in_allg = commander_stats[commander_stats['allg'] == allg].sort_values('Total_VP', ascending=False).iloc[0]
+            #     cols[i].metric(f"🚩 {allg}", top_in_allg['player'], f"{top_in_allg['Total_VP']} VP")
+        
+            # st.divider()
+
+            st.write("### 🛡️ Sector Commanders")
+            
+            # 1. Unpivot/Melt to standardise columns (Now including Factions)
+            p1 = df[['display_p1_name', 'p1_allegiance', 'p1_faction', 'p1_score_total']].rename(
+                columns={'display_p1_name': 'player', 'p1_allegiance': 'allg', 'p1_faction': 'faction', 'p1_score_total': 'score'}
+            )
+            p2 = df[['display_p2_name', 'p2_allegiance', 'p2_faction', 'p2_score_total']].rename(
+                columns={'display_p2_name': 'player', 'p2_allegiance': 'allg', 'p2_faction': 'faction', 'p2_score_total': 'score'}
+            )
+            all_perf = pd.concat([p1, p2])
+            
+            # 2. Aggregate stats
+            # We group by player and allegiance, but take the 'first' faction found 
+            # (or use .mode() if they played multiple, but 'first' is usually safe for an event)
+            commander_stats = all_perf.groupby(['allg', 'player']).agg(
+                Total_VP=('score', 'sum'),
+                Faction=('faction', 'first') 
+            ).reset_index()
+            
+            # 3. Create columns for each Allegiance
+            # allg_list = sorted(all_perf['allg'].unique())
+            # This removes any None values before trying to sort them
+            allg_list = sorted([a for a in all_perf['allg'].unique() if a is not None])
+
+            cols = st.columns(len(allg_list))
+            
+            medals = ["🥇 Gold", "🥈 Silver", "🥉 Bronze"]
+            
+            for i, current_allg in enumerate(allg_list):
+                with cols[i]:
+                    st.subheader(f"🚩 {current_allg}")
+                    
+                    # Get top 3 for this specific allegiance
+                    top_3 = commander_stats[commander_stats['allg'] == current_allg].sort_values('Total_VP', ascending=False).head(3)
+                    
+                    # Loop through top 3 and display metrics
+                    for rank, (_, row) in enumerate(top_3.iterrows()):
+                        # We put the Faction in the Label to make it look professional
+                        st.metric(
+                            label=f"{medals[rank]} | {row['Faction']}", 
+                            value=row['player'], 
+                            delta=f"{int(row['Total_VP'])} VP",
+                            delta_color="off"
+                        )
+            
+            st.divider()
+
+
+        
+            # --- NARRATIVE AWARDS ---
             st.write("### 🕵️ Intelligence Reports")
-            c1, c2 = st.columns(2)
+            n1, n2, n3 = st.columns(3)
+        
+            # 1. Tzeentch’s Plaything
             plaything = leaderboard[leaderboard['Wins'] < 2].sort_values('Total_Points', ascending=False)
             if not plaything.empty:
-                c1.info(f"**Tzeentch’s Plaything:** {plaything.iloc[0]['player']} (High VP, Low Wins)")
+                p_row = plaything.iloc[0]
+                n1.info(
+                    f"**Tzeentch’s Plaything**\n\n"
+                    f"**{p_row['player']}** accumulated a massive **{p_row['Total_Points']}** total points, "
+                    f"despite only securing **{p_row['Wins']}** wins. The Changer of Ways is pleased with this complexity."
+                )
+        
+            # 2. The Eternal Martyr
             martyr = leaderboard.sort_values(['Wins', 'Avg_Score'], ascending=[True, False])
-            c2.info(f"**The Eternal Martyr:** {martyr.iloc[0]['player']} (Highest Avg in Defeat)")
+            if not martyr.empty:
+                m_row = martyr.iloc[0]
+                n2.info(
+                    f"**The Eternal Martyr**\n\n"
+                    f"**{m_row['player']}** fought bravely to the bitter end. Despite the losses, "
+                    f"they maintained a high average of **{m_row['Avg_Score']} pts** per game. Their sacrifice is noted."
+                )
+        
+            # 3. The Broken Spearhead
+            # We calculate 'Went First' counts from the raw match data
+            wf_counts = df['went_first'].value_counts().reset_index()
+            wf_counts.columns = ['player', 'Starts']
+            spearhead_data = pd.merge(wf_counts, leaderboard, on='player')
+            spearhead_data['Win_Rate'] = spearhead_data['Wins'] / spearhead_data['Played']
+            # Filter for people who went first at least twice, then sort by win rate ascending
+            spearhead = spearhead_data[spearhead_data['Starts'] >= 2].sort_values('Win_Rate', ascending=True)
+            if not spearhead.empty:
+                s_row = spearhead.iloc[0]
+                n3.warning(
+                    f"**The Broken Spearhead**\n\n"
+                    f"**{s_row['player']}** seized the initiative in **{s_row['Starts']}** separate matches, "
+                    f"yet found no victory in the charge. The best-laid plans often crumble upon contact."
+                )
 
         def show_faction_win_rates(df):
             st.subheader(f"📊 {selected_event} Faction Meta")
@@ -630,6 +755,50 @@ else:
             fig = px.pie(stats, values='Count', names='Faction', hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
             st.plotly_chart(fig, use_container_width=True)
 
+                # --- REPORT 5: ROUND-BY-ROUND PERFORMANCE (GROUPED BAR CHART) ---
+        def show_round_averages_chart(df):
+            st.subheader(f"📊 {selected_event} Round Performance")
+            
+            # 1. Identify winner and loser score for every row
+            # (Note: Using awards_event_df ensures 'Not Played' results don't skew the averages)
+            df['Winner_Score'] = df[['p1_score_total', 'p2_score_total']].max(axis=1)
+            df['Loser_Score'] = df[['p1_score_total', 'p2_score_total']].min(axis=1)
+            
+            # 2. Group by round and calculate averages
+            round_stats = df.groupby('round_number').agg({
+                'Winner_Score': 'mean',
+                'Loser_Score': 'mean'
+            }).reset_index()
+            
+            # 3. 'Melt' the data for Plotly (changes columns into rows)
+            melted_df = round_stats.melt(
+                id_vars='round_number', 
+                value_vars=['Winner_Score', 'Loser_Score'],
+                var_name='Result Type', 
+                value_name='Average Score'
+            )
+            
+            # 4. Create the Grouped Bar Chart
+            fig = px.bar(
+                melted_df,
+                x='round_number',
+                y='Average Score',
+                color='Result Type',
+                barmode='group', # Puts bars side-by-side
+                text_auto='.1f', # Shows 1 decimal place on the bars
+                labels={'round_number': 'Round Number', 'Average Score': 'Avg Score'},
+                title=f"Avg Winning vs. Losing Score by Round",
+                color_discrete_map={
+                    'Winner_Score': '#00cc66', # Green for winner
+                    'Loser_Score': '#ff4d4d'    # Red for loser
+                }
+            )
+            
+            # Ensure all 5 rounds show on the X-axis
+            fig.update_layout(xaxis=dict(tickmode='linear', tick0=1, dtick=1))
+            
+            st.plotly_chart(fig, use_container_width=True)
+
         def show_allegiance_points_pie(df):
             st.subheader(f"🍰 {selected_event} Points per Allegiance")
             p1 = df[['p1_allegiance', 'p1_score_total']].rename(columns={'p1_allegiance':'a', 'p1_score_total':'s'})
@@ -644,11 +813,11 @@ else:
 
         # --- STEP 2: FETCH & FILTER DATA ---
         # Get unique events for the dropdown
-        event_res = supabase.table("match_results").select("event_name").execute()
+        event_res = supabase.table("match_results").select("event_name").eq("event_status", "Finished").execute()
         if event_res.data:
             event_options = sorted(list(set([row['event_name'] for row in event_res.data if row['event_name']])))
             selected_event = st.selectbox("Select Event to View Reports", event_options)
-
+    
             # Fetch filtered data
             res = supabase.table("match_results").select("*").eq("event_name", selected_event).execute()
             if res.data:
@@ -656,7 +825,14 @@ else:
                 
                 # Apply Global Pre-Filters
                 event_df = raw_df[
-                    (raw_df['status'] != 'Not Played') & 
+                    (raw_df['status'] != 'Not Logged') & 
+                    (raw_df['p1_status'] == 'Checked In') & 
+                    (raw_df['p2_status'] == 'Checked In')
+                ].copy()
+
+                        # Apply Global Pre-Filters
+                awards_df = raw_df[
+                    (raw_df['status'] == 'Logged') & 
                     (raw_df['p1_status'] == 'Checked In') & 
                     (raw_df['p2_status'] == 'Checked In')
                 ].copy()
@@ -665,19 +841,21 @@ else:
                     # --- STEP 3: RUN REPORTS IN ORDER ---
                     ranking_data = show_leaderboard(event_df)
                     st.divider()
-                    show_event_awards(event_df, ranking_data)
+                    show_event_awards(awards_df, ranking_data)
+                    st.divider()
+                    show_round_averages_chart(awards_df)
                     st.divider()
                     show_faction_win_rates(event_df)
                     st.divider()
                     show_faction_turnout(event_df)
                     st.divider()
                     show_allegiance_points_pie(event_df)
+        
                 else:
                     st.warning("No valid match data found after filtering out Dropped/Unplayed results.")
         else:
             st.info("No events found in the database.")
-
-
+        
     elif st.session_state.page == "Graphs":
         st.header("Graphs")
         st.divider()
@@ -701,50 +879,98 @@ else:
 
 
     elif st.session_state.page == "Personal Stats":
-        st.header("Personal Stats")
+        st.header("👤 Your Career Dashboard")
         st.divider()
-        # 1. Get the current user's name for filtering
-        # (Assuming discord_name is established from st.session_state.user at the top)
+        
         current_user = discord_name
 
-        # 2. Fetch matches where the user is P1 OR P2
-        # We use the .or_() filter on the view's column names
+        # 1. Fetch ALL matches for this player (no limit)
         res = supabase.table("match_results") \
             .select("*") \
             .or_(f"display_p1_name.eq.{current_user},display_p2_name.eq.{current_user}") \
-            .order("game_date", desc=True) \
-            .limit(10) \
             .execute()
 
         if res.data:
-            recent_df = pd.DataFrame(res.data)
-            st.subheader("Your Latest 10 Battle Reports")
+            full_df = pd.DataFrame(res.data)
+
+            # 2. Standardise: 'User' is always you, 'Opp' is always the other person
+            p1_mask = full_df['display_p1_name'] == current_user
+            
+            p1_side = full_df[p1_mask].copy()
+            p1_side.columns = [c.replace('p1_', 'user_').replace('p2_', 'opp_') for c in p1_side.columns]
+            
+            p2_side = full_df[~p1_mask].copy()
+            # Rename p1 columns to opp and p2 to user
+            p2_side.columns = [c.replace('p1_', 'opp_').replace('p2_', 'user_') for c in p2_side.columns]
+
+            user_df = pd.concat([p1_side, p2_side])
+            user_df['is_win'] = user_df['user_score_total'] > user_df['opp_score_total']
+            user_df['went_first_flag'] = user_df['went_first'] == current_user
+
+            # 3. THREE DROPDOWNS (Cascading)
+            st.write("### 🔍 Filter Your History")
+            c1, c2, c3 = st.columns(3)
+
+            # Dropdown 1: System
+            sys_options = sorted(user_df['system_name'].unique().tolist())
+            sel_sys = c1.selectbox("Select System", ["All Systems"] + sys_options)
+            
+            df_filtered = user_df.copy()
+            if sel_sys != "All Systems":
+                df_filtered = df_filtered[df_filtered['system_name'] == sel_sys]
+
+            # Dropdown 2: Allegiance (Filtered by System)
+            allg_options = sorted(df_filtered['user_allegiance'].unique().tolist())
+            sel_allg = c2.selectbox("Select Allegiance", ["All Allegiances"] + allg_options)
+            
+            if sel_allg != "All Allegiances":
+                df_filtered = df_filtered[df_filtered['user_allegiance'] == sel_allg]
+
+            # Dropdown 3: Faction (Filtered by Allegiance)
+            fac_options = sorted(df_filtered['user_faction'].unique().tolist())
+            sel_fac = c3.selectbox("Select Faction", ["All Factions"] + fac_options)
+            
+            if sel_fac != "All Factions":
+                df_filtered = df_filtered[df_filtered['user_faction'] == sel_fac]
+
+            # 4. Calculate Stats for the final filtered selection
+            total_games = len(df_filtered)
+            wins = df_filtered['is_win'].sum()
+            win_rate = (wins / total_games * 100) if total_games > 0 else 0
+            avg_score = df_filtered['user_score_total'].mean() if total_games > 0 else 0
+            
+            first_df = df_filtered[df_filtered['went_first_flag'] == True]
+            first_win_rate = (first_df['is_win'].sum() / len(first_df) * 100) if len(first_df) > 0 else 0
+
+            # 5. Display Metrics
+            st.subheader(f"📊 Stats for: {sel_fac if sel_fac != 'All Factions' else sel_allg if sel_allg != 'All Allegiances' else sel_sys}")
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("Games Played", total_games)
+            m2.metric("Win Rate", f"{win_rate:.1f}%")
+            m3.metric("Avg Score", f"{avg_score:.1f}")
+            m4.metric("Win% (Went First)", f"{first_win_rate:.1f}%")
+
+            st.divider()
+
+            # 6. History Table
+            st.write("### 📜 Match History")
             st.dataframe(
-                recent_df,
-                column_order=(
-                    "game_date",
-                    "system_name",
-                    "display_p1_name",
-                    "p1_faction",
-                    "p1_score_total",
-                    "display_p2_name",
-                    "p2_faction",
-                    "p2_score_total"
-                ),
+                df_filtered.sort_values('game_date', ascending=False),
+                column_order=("game_date", "user_faction", "user_score_total", "opp_score_total", "opp_faction", "display_opp_name", "event_name"),
                 column_config={
                     "game_date": "Date",
-                    "system_name": "System",
-                    "display_p1_name": "Player 1",
-                    "p1_faction": "P1 Faction",
-                    "p1_score_total": "P1 Score",
-                    "display_p2_name": "Player 2",
-                    "p2_faction": "P2 Faction",
-                    "p2_score_total": "P2 Score"
+                    "user_faction": "Your Faction",
+                    "user_score_total": "Your Score",
+                    "opp_score_total": "Opp Score",
+                    "opp_faction": "Opp Faction",
+                    "display_opp_name": "Opponent",
+                    "event_name": "Event"
                 },
                 use_container_width=True,
                 hide_index=True
             )
-
         else:
-            st.info("You haven't logged any games yet. Get to the table!")
+            st.info("No match history found. Time to roll some dice!")
+
+
 
