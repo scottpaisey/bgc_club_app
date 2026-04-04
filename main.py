@@ -869,7 +869,12 @@ else:
             # Fetch filtered data
             res = supabase.table("match_results").select("*").eq("system_name", selected_system).execute()
             if res.data:
-                system_df = pd.DataFrame(res.data)
+                raw_df = pd.DataFrame(res.data)
+                
+                # Apply Global Pre-Filters
+                system_df = raw_df[
+                    (raw_df['system_name'] == selected_system)
+                ].copy()
                 
                 if not system_df.empty:
                     # --- STEP 3: RUN REPORTS IN ORDER ---
