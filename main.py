@@ -828,18 +828,49 @@ else:
         
         def show_faction_win_rates(df):
             st.subheader(f"📊 {selected_system} Faction Meta")
+    
+            # Data processing
             p1_data = df[['p1_faction', 'p1_score_total', 'p2_score_total']].copy()
             p1_data.columns = ['faction', 'score', 'opp_score']
             p2_data = df[['p2_faction', 'p2_score_total', 'p1_score_total']].copy()
             p2_data.columns = ['faction', 'score', 'opp_score']
+            
             combined = pd.concat([p1_data, p2_data])
-            combined['is_win'] = combined['score'] > combined['opp_score']
+            combined['is_win'] = (combined['score'] > combined['opp_score']).astype(int)
+            
             stats = combined.groupby('faction').agg(Total=('faction', 'count'), Wins=('is_win', 'sum')).reset_index()
             stats['Win_Rate'] = (stats['Wins'] / stats['Total'] * 100).round(1)
-            stats = stats.sort_values(by='Win_Rate', ascending=False)
-            fig = px.bar(stats, x='faction', y='Win_Rate', text='Win_Rate', color='Win_Rate', color_continuous_scale='RdYlGn', height=400)
-            fig.update_layout(yaxis_range=[0, 110])
+    
+            # Sort ascending for horizontal bars so the highest is at the top
+            stats = stats.sort_values(by='Win_Rate', ascending=True)
+        
+            # Swap x and y; hide the color continuous scale (show_scale=False)
+            fig = px.bar(
+                stats, 
+                x='Win_Rate', 
+                y='faction', 
+                text='Win_Rate', 
+                color='Win_Rate', 
+                color_continuous_scale='RdYlGn', 
+                height=500,
+                orientation='h'
+            )
+        
+            # Add the 50% threshold line
+            fig.add_vline(x=50, line_dash="dash", line_color="white", annotation_text="50% Mark")
+        
+            # Clean up layout: hide the color bar and set x-axis range
+            fig.update_layout(
+                xaxis_range=[0, 100],
+                coloraxis_showscale=False,
+                xaxis_title="Win Rate (%)",
+                yaxis_title="Faction"
+            )
+            
+            fig.update_traces(texttemplate='%{text}%', textposition='outside')
+        
             st.plotly_chart(fig, use_container_width=True)
+        
 
         def show_faction_turnout(df):
             st.subheader(f"🍕 {selected_system} Faction Turnout")
