@@ -925,15 +925,35 @@ else:
                                   placeholder="Choose...", key="p1_fac_sel")
         else:
             p1_fac = st.selectbox("Your Faction", [], disabled=True)
-        # 3. Sub-Faction Dropdown (MUST use filtered options)
+        # 3. Sub-Faction Dropdown
         if p1_fac:
             p1_sub_df = p1_fac_df[p1_fac_df['faction'] == p1_fac]
             p1_sub = st.selectbox("Your Kill Team", p1_sub_df['subfaction'].unique(), index=None,
                                   placeholder="Choose...", key="p1_sub_sel")
+            
+            # Logic for dynamic min/max
+            if p1_sub:
+                # Get the specific data for the selected subfaction
+                selected_sub = p1_sub_df[p1_sub_df['subfaction'] == p1_sub].iloc[0]
+                min_val = int(selected_sub['kt_min_op'])
+                max_val = int(selected_sub['kt_max_op'])
+                
+                # Disable if min and max are the same
+                is_disabled = (min_val == max_val)
+                
+                p1_op_count = st.number_input(
+                    "Number of Operatives?*", 
+                    min_value=min_val, 
+                    max_value=max_val, 
+                    value=min_val, # Default to min
+                    disabled=is_disabled,
+                    key="p1_op_count"
+                )
+            else:
+                st.number_input("Number of Operatives?*", disabled=True, key="p1_op_count_placeholder")
         else:
             p1_sub = st.selectbox("Your Kill Team", [], disabled=True)
-        # p1_wf = st.toggle("Went First?*", key="p1_wf_key", on_change=handle_wf_toggle, args=("p1",))
-        p1_op_count = st.number_input("Number of Operatives?*", 6, 14, key="p1_op_count")
+            st.number_input("Number of Operatives?*", disabled=True, key="p1_op_count_init")
 
         st.write("**Opponent Details**")
 
