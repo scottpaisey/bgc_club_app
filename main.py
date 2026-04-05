@@ -1610,30 +1610,34 @@ else:
     elif st.session_state.page == "Graphs":
         st.header("Graphs")
         st.divider()
+
+        # 1. Setup Dynamic Labels & Column Mapping
+        # Logic: If KT, use subfaction columns; otherwise use faction columns.
+        is_kt = selected_system == "KT" # Adjust string if it's "Kill Team"
+        label = "Subfaction" if is_kt else "Faction"
+        f_col = "p1_subfaction" if is_kt else "p1_faction"
+        opp_f_col = "p2_subfaction" if is_kt else "p2_faction"
         
-        def show_faction_win_rates(df):
-            st.subheader(f"📊 {selected_system} Faction Meta")
+        def show_faction_win_rates(df, label, f_col, opp_f_col):
+            st.subheader(f"📊 {selected_system} {label} Meta")
     
-            # Data processing
-            p1_data = df[['p1_faction', 'p1_score_total', 'p2_score_total']].copy()
-            p1_data.columns = ['faction', 'score', 'opp_score']
-            p2_data = df[['p2_faction', 'p2_score_total', 'p1_score_total']].copy()
-            p2_data.columns = ['faction', 'score', 'opp_score']
+            # Use the dynamic columns defined above
+            p1_data = df[[f_col, 'p1_score_total', 'p2_score_total']].copy()
+            p1_data.columns = ['unit', 'score', 'opp_score']
+            p2_data = df[[opp_f_col, 'p2_score_total', 'p1_score_total']].copy()
+            p2_data.columns = ['unit', 'score', 'opp_score']
             
             combined = pd.concat([p1_data, p2_data])
             combined['is_win'] = (combined['score'] > combined['opp_score']).astype(int)
             
-            stats = combined.groupby('faction').agg(Total=('faction', 'count'), Wins=('is_win', 'sum')).reset_index()
+            stats = combined.groupby('unit').agg(Total=('unit', 'count'), Wins=('is_win', 'sum')).reset_index()
             stats['Win_Rate'] = (stats['Wins'] / stats['Total'] * 100).round(1)
-    
-            # Sort ascending for horizontal bars so the highest is at the top
             stats = stats.sort_values(by='Win_Rate', ascending=True)
         
-            # Swap x and y; hide the color continuous scale (show_scale=False)
             fig = px.bar(
                 stats, 
                 x='Win_Rate', 
-                y='faction', 
+                y='unit', 
                 text='Win_Rate', 
                 color='Win_Rate', 
                 color_continuous_scale='RdYlGn', 
@@ -1641,28 +1645,22 @@ else:
                 orientation='h'
             )
         
-            # Add the 50% threshold line
             fig.add_vline(x=50, line_dash="dash", line_color="white", annotation_text="50% Mark")
-        
-            # Clean up layout: hide the color bar and set x-axis range
             fig.update_layout(
                 xaxis_range=[0, 100],
                 coloraxis_showscale=False,
                 xaxis_title="Win Rate (%)",
-                yaxis_title="Faction"
+                yaxis_title=label # Dynamic Label
             )
-            
             fig.update_traces(texttemplate='%{text}%', textposition='outside')
-        
             st.plotly_chart(fig, use_container_width=True)
         
-
-        def show_faction_turnout(df):
-            st.subheader(f"🍕 {selected_system} Faction Turnout")
-            combined = pd.concat([df[['p1_faction']].rename(columns={'p1_faction':'f'}), df[['p2_faction']].rename(columns={'p2_faction':'f'})])
+        def show_faction_turnout(df, label, f_col, opp_f_col):
+            st.subheader(f"🍕 {selected_system} {label} Turnout")
+            combined = pd.concat([df[[f_col]].rename(columns={f_col:'f'}), df[[opp_f_col]].rename(columns={opp_f_col:'f'})])
             stats = combined['f'].value_counts().reset_index()
-            stats.columns = ['Faction', 'Count']
-            fig = px.pie(stats, values='Count', names='Faction', hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
+            stats.columns = [label, 'Count'] # Dynamic Label
+            fig = px.pie(stats, values='Count', names=label, hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
             st.plotly_chart(fig, use_container_width=True)
 
         def show_allegiance_points_pie(df):
@@ -1681,25 +1679,21 @@ else:
         if system_res.data:
             system_options = sorted(list(set([row['system_name'] for row in system_res.data if row['system_name']])))
             selected_system = st.selectbox("Select System to View Reports", system_options)
-    
             # Fetch filtered data
             res = supabase.table("match_results").select("*").eq("system_name", selected_system).execute()
             if res.data:
                 raw_df = pd.DataFrame(res.data)
-                
                 # Apply Global Pre-Filters
                 system_df = raw_df[
                     (raw_df['system_name'] == selected_system)
                 ].copy()
-                
                 if not system_df.empty:
                     # --- STEP 3: RUN REPORTS IN ORDER ---
-                    show_faction_win_rates(system_df)
+                    show_faction_win_rates(system_df, label, f_col, opp_f_col)
                     st.divider()
-                    show_faction_turnout(system_df)
+                    show_faction_turnout(system_df, label, f_col, opp_f_col)
                     st.divider()
                     show_allegiance_points_pie(system_df)
-        
                 else:
                     st.warning("No valid match data found after filtering out results.")
         else:
