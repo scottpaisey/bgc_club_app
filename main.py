@@ -1002,14 +1002,35 @@ else:
                                   placeholder="Choose...", key="p2_fac_sel")
         else:
             p2_fac = st.selectbox("Opponents Faction", [], disabled=True)
-        # 3. Sub-Faction Dropdown (MUST use filtered options)
+        # 3. Sub-Faction Dropdown
         if p2_fac:
             p2_sub_df = p2_fac_df[p2_fac_df['faction'] == p2_fac]
             p2_sub = st.selectbox("Opponents Kill Team", p2_sub_df['subfaction'].unique(), index=None,
                                   placeholder="Choose...", key="p2_sub_sel")
+            
+            # Logic for dynamic min/max
+            if p2_sub:
+                # Get the specific data for the selected subfaction
+                selected_sub = p2_sub_df[p2_sub_df['subfaction'] == p2_sub].iloc[0]
+                min_val = int(selected_sub['kt_min_op'])
+                max_val = int(selected_sub['kt_max_op'])
+                
+                # Disable if min and max are the same
+                is_disabled = (min_val == max_val)
+                
+                p2_op_count = st.number_input(
+                    "Number of Operatives?*", 
+                    min_value=min_val, 
+                    max_value=max_val, 
+                    value=min_val, # Default to min
+                    disabled=is_disabled,
+                    key="p2_op_count"
+                )
+            else:
+                st.number_input("Number of Operatives?*", disabled=True, key="p2_op_count_placeholder")
         else:
             p2_sub = st.selectbox("Opponents Kill Team", [], disabled=True)
-        # p2_wf = st.toggle("Went First?*", key="p2_wf_key", on_change=handle_wf_toggle, args=("p1",))
+            st.number_input("Number of Operatives?*", disabled=True, key="p2_op_count_init")
 
         attacker_id = None
         defender_id = None
@@ -1098,6 +1119,7 @@ else:
         p1_all = st.session_state.game_data.get("p1_all", None)
         p1_fac = st.session_state.game_data.get("p1_fac", None)
         p1_sub = st.session_state.game_data.get("p1_sub", None)
+        p1_op_count = st.session_state.game_data.get("p1_op_count", None)
 
         p2_id = st.session_state.game_data.get("p2_id", None)
         p2_name = st.session_state.game_data.get("p2_name", None)
@@ -1105,7 +1127,8 @@ else:
         p2_all = st.session_state.game_data.get("p2_all", None)
         p2_fac = st.session_state.game_data.get("p2_fac", None)
         p2_sub = st.session_state.game_data.get("p2_sub", None)
-
+        p2_op_count = st.session_state.game_data.get("p2_op_count", None)
+        
         # 1. The Data Entry Form
         if not st.session_state.confirm_submit:
             with st.form("score_submission_form"):
