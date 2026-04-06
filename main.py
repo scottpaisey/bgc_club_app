@@ -1671,23 +1671,50 @@ else:
                 st.plotly_chart(fig, use_container_width=True)
             
             def show_faction_turnout(df, label, f_col, opp_f_col):
-                st.subheader(f"🍕 {selected_system} {label} Turnout")
-                combined = pd.concat([df[[f_col]].rename(columns={f_col:'f'}), df[[opp_f_col]].rename(columns={opp_f_col:'f'})])
+                st.subheader(f"👥 {selected_system} {label} Turnout")
+                
+                # Combine both players to get total representation
+                combined = pd.concat([
+                    df[[f_col]].rename(columns={f_col:'f'}), 
+                    df[[opp_f_col]].rename(columns={opp_f_col:'f'})
+                ])
                 stats = combined['f'].value_counts().reset_index()
-                stats.columns = [label, 'Count']
-                fig = px.pie(stats, values='Count', names=label, hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
+                stats.columns = [label, 'Players']
+                stats = stats.sort_values('Players', ascending=True) # Ascending for better bar display
+            
+                fig = px.bar(
+                    stats, 
+                    x='Players', 
+                    y=label, 
+                    orientation='h',
+                    text='Players',
+                    color_discrete_sequence=['#636EFA'] # Solid color for turnout
+                )
+                fig.update_layout(height=max(400, len(stats) * 30)) # Dynamic height for scrolling
+                fig.update_traces(textposition='outside')
                 st.plotly_chart(fig, use_container_width=True)
-
-            def show_allegiance_points_pie(df):
-                st.subheader(f"🍰 {selected_system} Points per Allegiance")
+            
+            def show_allegiance_points_bar(df):
+                st.subheader(f"⚔️ {selected_system} Points by Allegiance")
+                
                 p1 = df[['p1_allegiance', 'p1_score_total']].rename(columns={'p1_allegiance':'a', 'p1_score_total':'s'})
                 p2 = df[['p2_allegiance', 'p2_score_total']].rename(columns={'p2_allegiance':'a', 'p2_score_total':'s'})
                 combined = pd.concat([p1, p2])
-                agg = combined.groupby('a')['s'].sum().reset_index().sort_values('s', ascending=False)
-                agg['label'] = agg['a'] + " (" + agg['s'].astype(str) + " pts)"
-                fig = px.pie(agg, values='s', names='label', hole=0.5, title=f"Total Event Points: {agg['s'].sum():,}")
-                fig.update_traces(textinfo='percent+label')
-                fig.update_layout(showlegend=False)
+                
+                agg = combined.groupby('a')['s'].sum().reset_index().sort_values('s', ascending=True)
+                
+                fig = px.bar(
+                    agg, 
+                    x='s', 
+                    y='a', 
+                    orientation='h',
+                    labels={'s': 'Total Points Scored', 'a': 'Allegiance'},
+                    text='s',
+                    color='s',
+                    color_continuous_scale='Viridis'
+                )
+                fig.update_layout(coloraxis_showscale=False)
+                fig.update_traces(textposition='outside')
                 st.plotly_chart(fig, use_container_width=True)
 
             # --- STEP 4: FETCH FILTERED DATA & RUN REPORTS ---
