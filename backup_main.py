@@ -69,18 +69,19 @@ if "code" in st.query_params:
 
 # # scottpaisey 03/04/2026
 # # DEBUG: comment this out if the sign in has issues !!!
-# # 3. PERSISTENT USER SYNC
-# if "user" in st.session_state and "user_role" not in st.session_state:
-#     try:
-#         user_id = st.session_state.user.id
-#         profile_res = supabase.table("profiles").select("role").eq("id", user_id).single().execute()
-#         if profile_res.data:
-#             st.session_state.user_role = profile_res.data['role']
-#         else:
-#             st.session_state.user_role = "member" # Fallback
-#     except Exception as e:
-#         st.session_state.user_role = "member"
-
+# 3. PERSISTENT USER SYNC (Uncommented and improved)
+if "user" in st.session_state and "user_role" not in st.session_state:
+    try:
+        user_id = st.session_state.user.id
+        # Fetch the role from the profile table where ID matches the authenticated user
+        profile_res = supabase.table("profiles").select("role").eq("id", user_id).execute()
+        
+        if profile_res.data:
+            st.session_state.user_role = profile_res.data[0].get('role', 'member')
+        else:
+            st.session_state.user_role = "member" # Fallback if no profile exists
+    except Exception as e:
+        st.session_state.user_role = "member"
 
 # 4. LOGIN FUNCTION
 def show_login_screen():
@@ -188,9 +189,20 @@ else:
         if st.button("Warhammer 40,000"):
             st.session_state.page = "40k"
             st.rerun()
-        if st.button("Age of Sigmar", disabled=True):
-            st.session_state.page = "AoS"
+        if st.button("Age of Sigmar"):
+            st.session_state.page = "AOS"
             st.rerun()
+        if st.button("Kill Team"):
+            st.session_state.page = "KT"
+            st.rerun()
+        if st.session_state.get("user_role") == "system_admin":
+            if st.button("Middle Earth: SBG"):
+                st.session_state.page = "MESBG"
+                st.rerun()
+        if st.session_state.get("user_role") == "system_admin":
+            if st.button("Old World"):
+                st.session_state.page = "OW"
+                st.rerun()
 
     elif st.session_state.page == "40k":
         st.header("Warhammer 40,000 Game")
@@ -540,6 +552,785 @@ else:
                 st.session_state.confirm_submit = False
                 st.rerun()
 
+    elif st.session_state.page == "AOS":
+        st.header("Age of Sigmar Game")
+        st.divider()
+
+        try:
+            p1_response_system_factions = supabase.table("system_factions").select("*").execute()
+            p1_df_system_factions = pd.DataFrame(p1_response_system_factions.data)
+            p2_response_system_factions = supabase.table("system_factions").select("*").execute()
+            p2_df_system_factions = pd.DataFrame(p2_response_system_factions.data)
+            p2_response_account = supabase.table("profiles").select("*").execute()
+            p2_df_account = pd.DataFrame(p2_response_account.data)
+        except Exception as e:
+            print(e)
+        st.subheader("Game Details")
+        game_size = st.selectbox('Game Size', ['2000pts', '1000pts', 'Other'], index=None,
+                                 placeholder="Choose...", key="game_s")
+        # mission_pack = st.selectbox(st.selectbox('Mission Pack',['Strike Force (2k)', 'Incursion (1k)', 'Combat Partol'], index=None, placeholder="Choose...")
+        st.write("**Your Details**")
+        # Extract the name from Discord metadata
+        p1_name = st.text_input("Your Discord Name*", value=discord_name, key="p1_username", disabled=True)
+        # 1. Allegiance Dropdown
+        p1_all_df = p1_df_system_factions[p1_df_system_factions['short_name'] == 'AOS']
+        p1_all = st.selectbox("Your Allegiance", p1_all_df['allegiance'].unique(), index=None,
+                              placeholder="Choose...", key="p1_all_sel")
+        # 2. Faction Dropdown (MUST use filtered options)
+        if p1_all:
+            # We filter the dataframe here
+            p1_fac_df = p1_all_df[p1_all_df['allegiance'] == p1_all]
+            # We use faction_df to get the unique names for the options
+            p1_fac = st.selectbox("Your Faction", p1_fac_df['faction'].unique(), index=None,
+                                  placeholder="Choose...", key="p1_fac_sel")
+        else:
+            p1_fac = st.selectbox("Your Faction", [], disabled=True)
+        # 3. Sub-Faction Dropdown (MUST use filtered options)
+        if p1_fac:
+            p1_sub_df = p1_fac_df[p1_fac_df['faction'] == p1_fac]
+            p1_sub = st.selectbox("Your Sub-Faction", p1_sub_df['subfaction'].unique(), index=None,
+                                  placeholder="Choose...", key="p1_sub_sel")
+        else:
+            p1_sub = st.selectbox("Your Sub-Faction", [], disabled=True)
+        # p1_wf = st.toggle("Went First?*", key="p1_wf_key", on_change=handle_wf_toggle, args=("p1",))
+
+        st.write("**Opponent Details**")
+
+        # 1. Fetch all profiles from Supabase to check names against
+        # You should wrap this in st.cache_data if your club gets very large
+        profiles_resp = supabase.table("profiles").select("id, full_name").execute()
+        db_profiles = profiles_resp.data  # List of dicts: {'id': '...', 'full_name': '...'}
+        # 2. Text Input for Opponent
+        p2_input = st.text_input("Opponent Name*", key="p2_username",
+                                 help="Type their Discord User Name to link their profile")
+        # 3. Validation Step
+        p2_id = None
+        p2_name = None
+        p2_custom_name = None
+
+        if p2_input:
+            search_term = p2_input.strip().lower()
+
+            # Use fillna to prevent crashes on nulls in DB
+            mask = (p2_df_account['username'].fillna('').str.lower() == search_term) | \
+                   (p2_df_account['full_name'].fillna('').str.lower() == search_term)
+
+            matched_rows = p2_df_account[mask]
+
+            if not matched_rows.empty:
+                user_row = matched_rows.iloc[0]
+                p2_id = user_row['id']
+                # Assign the found name to p2_name
+                p2_name = user_row['full_name'] if user_row['full_name'] else user_row['username']
+                st.success(f"✅ User found! Linked to **{p2_name}**.")
+            else:
+                p2_id = None
+                p2_name = p2_input
+                st.warning("⚠️ User not found. Recording as 'Guest'.")
+
+        # 1. Allegiance Dropdown
+        p2_all_df = p2_df_system_factions[p2_df_system_factions['short_name'] == 'AOS']
+        p2_all = st.selectbox("Opponents Allegiance", p2_all_df['allegiance'].unique(), index=None,
+                              placeholder="Choose...", key="p2_all_sel")
+        # 2. Faction Dropdown (MUST use filtered options)
+        if p2_all:
+            # We filter the dataframe here
+            p2_fac_df = p2_all_df[p2_all_df['allegiance'] == p2_all]
+            # We use faction_df to get the unique names for the options
+            p2_fac = st.selectbox("Opponents Faction", p2_fac_df['faction'].unique(), index=None,
+                                  placeholder="Choose...", key="p2_fac_sel")
+        else:
+            p2_fac = st.selectbox("Opponents Faction", [], disabled=True)
+        # 3. Sub-Faction Dropdown (MUST use filtered options)
+        if p2_fac:
+            p2_sub_df = p2_fac_df[p2_fac_df['faction'] == p2_fac]
+            p2_sub = st.selectbox("Opponents Sub-Faction", p2_sub_df['subfaction'].unique(), index=None,
+                                  placeholder="Choose...", key="p2_sub_sel")
+        else:
+            p2_sub = st.selectbox("Opponents Sub-Faction", [], disabled=True)
+        # p2_wf = st.toggle("Went First?*", key="p2_wf_key", on_change=handle_wf_toggle, args=("p1",))
+
+        attacker_id = None
+        defender_id = None
+        went_first_id = None
+
+        options = ["You", "Opponent"]
+        went_first = st.segmented_control(
+            "Who went first?", options, selection_mode="single", key="went_first"
+        )
+        attacking_player = st.segmented_control(
+            "Who is the attacker?", options, selection_mode="single", key="attacking_player"
+        )
+
+        if st.button("Proceed to Scoring"):
+            # 1. Define your conditions
+            names_entered = p1_name and p2_name
+            allegiance_selected = p1_all and p2_all
+            factions_selected = p1_fac and p2_fac
+            sub_factions_selected = p1_sub and p2_sub
+            actual_p2_id = p2_id if (p2_id and p2_id != p2_name) else None
+
+            if not names_entered:
+                st.error("❌ Both player names are mandatory.")
+            elif not sub_factions_selected:
+                st.error("❌ Both players must select an Allegiance, Faction and Subfaction.")
+            else:
+                # 2. Assign Attacker / Defender
+                if attacking_player == "You":
+                    attacker_id = st.session_state.user.id
+                    defender_id = actual_p2_id
+                else:
+                    attacker_id = actual_p2_id
+                    defender_id = st.session_state.user.id
+                # 3. Assign Went First
+                if went_first == "You":
+                    went_first_id = st.session_state.user.id
+                else:
+                    went_first_id = actual_p2_id
+
+                # Lookup IDs
+                p1_row = p1_df_system_factions[p1_df_system_factions['subfaction'] == p1_sub].iloc[0]
+                p2_row = p2_df_system_factions[p2_df_system_factions['subfaction'] == p2_sub].iloc[0]
+
+                # Store data for the next page
+                st.session_state.game_data = {
+                    "system_id": p1_row['system_id'],
+                    "p1_id": st.session_state.user.id,
+                    "p1_name": p1_name,
+                    "p1_all": p1_all,
+                    "p1_fac": p1_fac,
+                    "p1_sub": p1_sub,
+                    "p2_id": actual_p2_id,
+                    "p2_name": p2_name,
+                    "p1_all": p1_all,
+                    "p2_fac": p2_fac,
+                    "p2_sub": p2_sub,
+                    "p1_fac_id": p1_row['faction_id'],
+                    "p2_fac_id": p2_row['faction_id'],
+                    "attacker_id": attacker_id,
+                    "defender_id": defender_id,
+                    "went_first_id": went_first_id,
+                    "game_size": game_size
+                }
+
+                # FIX 2: Switch the page and rerun
+                st.session_state.page = "AOS_scores"
+                st.rerun()
+
+    elif st.session_state.page == "AOS_scores":
+
+        st.subheader("Game Scores")
+        st.divider()
+
+        system_id = st.session_state.game_data.get("system_id", None)
+        game_size = st.session_state.game_data.get("game_size", None)
+
+        attacker_id = st.session_state.game_data.get("attacker_id", None)
+        defender_id = st.session_state.game_data.get("defender_id", None)
+        went_first_id = st.session_state.game_data.get("went_first_id", None)
+
+        p1_id = st.session_state.game_data.get("p1_id", None)
+        p1_name = st.session_state.game_data.get("p1_name", None)
+        p1_fac_id = st.session_state.game_data.get("p1_fac_id", None)
+        p1_all = st.session_state.game_data.get("p1_all", None)
+        p1_fac = st.session_state.game_data.get("p1_fac", None)
+        p1_sub = st.session_state.game_data.get("p1_sub", None)
+
+        p2_id = st.session_state.game_data.get("p2_id", None)
+        p2_name = st.session_state.game_data.get("p2_name", None)
+        p2_fac_id = st.session_state.game_data.get("p2_fac_id", None)
+        p2_all = st.session_state.game_data.get("p2_all", None)
+        p2_fac = st.session_state.game_data.get("p2_fac", None)
+        p2_sub = st.session_state.game_data.get("p2_sub", None)
+
+        # 1. The Data Entry Form
+        if not st.session_state.confirm_submit:
+            with st.form("score_submission_form"):
+                col3, col4 = st.columns(2)
+                with col3:
+                    st.subheader(f"{p1_name}")
+                    st.write(f"**{p1_fac}**")
+                    st.write(f"{p1_sub}")
+                    p1_pri = st.number_input("Primary Score*", 0, 50, key="p1_p")
+                    p1_sec = st.number_input("Battle Tactics Score*", 0, 30, key="p1_s")
+                    #if st.toggle("Battle Ready?*", key="p1_br"):
+                        #p1_br = 10
+                    #else:
+                        #p1_br = 0
+                    if st.toggle("Slain Enemy General?*", key="p1_killed_warlord"):
+                        p1_killed_warlord = True
+                    else:
+                        p1_killed_warlord = False
+                    if st.toggle("Tabled Opponent?*", key="p1_tabled_opponent"):
+                        p1_tabled_opponent = True
+                    else:
+                        p1_tabled_opponent = False
+                with col4:
+                    st.subheader(f"{p2_name}")
+                    st.write(f"**{p2_fac}**")
+                    st.write(f"{p2_sub}")
+                    p2_pri = st.number_input("Primary Score*", 0, 50, key="p2_p")
+                    p2_sec = st.number_input("Battle Tactics Score*", 0, 30, key="p2_s")
+                    #if st.toggle("Battle Ready?*", key="p2_br"):
+                        #p2_br = 10
+                    #else:
+                        #p2_br = 0
+                    if st.toggle("Slain Enemy General?*", key="p2_killed_warlord"):
+                        p2_killed_warlord = True
+                    else:
+                        p2_killed_warlord = False
+                    if st.toggle("Tabled Opponent?*", key="p2_tabled_opponent"):
+                        p2_tabled_opponent = True
+                    else:
+                        p2_tabled_opponent = False
+                    
+
+                # Use the form submit button to move to confirmation
+                submit_scores = st.form_submit_button("Review Results")
+
+                if submit_scores:
+                    st.session_state.temp_scores = {
+                        "p1_pri": p1_pri, "p1_sec": p1_sec, "p1_killed_warlord": p1_killed_warlord, "p1_tabled_opponent": p1_tabled_opponent,
+                        "p2_pri": p2_pri, "p2_sec": p2_sec, "p2_killed_warlord": p2_killed_warlord, "p2_tabled_opponent": p2_tabled_opponent
+                    }
+                    st.session_state.confirm_submit = True
+                    st.rerun()
+
+        # 2. The "Are You Sure?" Pop-up (Visualised as a Container)
+        else:
+            st.warning("⚠️ **Confirm Game Results**")
+            st.write("Please review the details below. **These cannot currently be changed after posting.**")
+            # Display all gathered info
+            setup = st.session_state.game_data
+            scores = st.session_state.temp_scores
+            # Calculate Totals
+            p1_total = scores['p1_pri'] + scores['p1_sec']
+            p2_total = scores['p2_pri'] + scores['p2_sec']
+
+            # Determine Results
+            if p1_total > p2_total:
+                winner_id, loser_id = setup['p1_id'], setup['p2_id']
+                is_draw = False
+            elif p2_total > p1_total:
+                winner_id, loser_id = setup['p2_id'], setup['p1_id']
+                is_draw = False
+            else:
+                winner_id, loser_id = None, None
+                is_draw = True
+
+            col_a, col_b = st.columns(2)
+            col_a.write(f"Name: **{setup['p1_name']}**"
+                        f"\n\nFaction: {setup['p1_fac']}"
+                        f"\n\nBattle Formation: {setup['p1_sub']}"
+                        f"\n\nPrimary: {scores['p1_pri']}"
+                        f"\n\nSecondary: {scores['p1_sec']}")
+            col_b.write(f"Name: **{setup['p2_name']}**"
+                        f"\n\nFaction: {setup['p2_fac']}"
+                        f"\n\nBattle Formation: {setup['p2_sub']}"
+                        f"\n\nPrimary: {scores['p2_pri']}"
+                        f"\n\nSecondary: {scores['p2_sec']}")
+
+            c1, c2 = st.columns(2)
+
+            def clean_id(val):
+                # If the value is 'krystal' or any other name string, return None
+                if isinstance(val, str) and len(val) < 30:
+                    return None
+                return val
+
+            if c1.button("✅ Yes, Post Results", type="primary", use_container_width=True):
+                # --- DATABASE INSERT LOGIC HERE ---
+                # inserting game data into table
+                match_details = {
+                        "game_system_id": setup['system_id'],
+                        "event_id": None,
+                        "round_id": None,
+                        "mission_id": None,
+                        "game_size": setup['game_size'],
+                        "player_1_id": setup['p1_id'],
+                        "p1_faction_id": setup['p1_fac_id'],
+                        "p1_score_01": scores['p1_pri'],
+                        "p1_score_02": scores['p1_sec'],
+                        "p1_score_03": 0,
+                        "p1_score_04": 0,
+                        "p1_score_05": 0,
+                        "p1_score_total": scores['p1_pri'] + scores['p1_sec'],
+                        "p1_score_mar": p1_total - p2_total,
+                        "player_2_id": clean_id(setup['p2_id']),
+                        "player_2_name": setup['p2_name'],
+                        "p2_faction_id": setup['p2_fac_id'],
+                        "p2_score_01": scores['p2_pri'],
+                        "p2_score_02": scores['p2_sec'],
+                        "p2_score_03": 0,
+                        "p2_score_04": 0,
+                        "p2_score_05": 0,
+                        "p2_score_total": scores['p2_pri'] + scores['p2_sec'],
+                        "p2_score_mar": p2_total - p1_total,
+                        "went_first_id": clean_id(setup['went_first_id']),
+                        "winner_id": clean_id(winner_id),
+                        "loser_id": clean_id(loser_id),
+                        "attacker_id": clean_id(setup['attacker_id']),
+                        "defender_id": clean_id(setup['defender_id']),
+                        "is_draw": is_draw,
+                        # "played_at": ,
+                        "recorded_by":  setup['p1_id'],
+                        # "club_id": ,
+                        "p1_killed_warlord": scores['p1_killed_warlord'],
+                        "p2_killed_warlord": scores['p2_killed_warlord'],
+                        "p1_tabled_opponent": scores['p1_tabled_opponent'],
+                        "p2_tabled_opponent": scores['p2_tabled_opponent'],
+                    }
+
+                supabase.table("matches").insert(match_details).execute()
+
+                st.success("Game posted to Supabase!")
+
+                st.session_state.game_data = {}
+                st.session_state.temp_scores = {}
+                st.session_state.confirm_submit = False
+                st.session_state.page = None  # Go back to home
+                st.rerun()
+                #st.session_state.selected_system = "AOS"
+                #st.session_state.page = None
+                #st.rerun()
+
+            if c2.button("❌ No, Edit Scores", use_container_width=True):
+                st.session_state.confirm_submit = False
+                st.rerun()
+
+    elif st.session_state.page == "KT":
+        st.header("Kill Team Game")
+        st.divider()
+
+        try:
+            p1_response_system_factions = supabase.table("system_factions").select("*").execute()
+            p1_df_system_factions = pd.DataFrame(p1_response_system_factions.data)
+            p2_response_system_factions = supabase.table("system_factions").select("*").execute()
+            p2_df_system_factions = pd.DataFrame(p2_response_system_factions.data)
+            p2_response_account = supabase.table("profiles").select("*").execute()
+            p2_df_account = pd.DataFrame(p2_response_account.data)
+        except Exception as e:
+            print(e)
+        st.subheader("Game Details")
+        #game_size = st.selectbox('Game Size', ['Strike Force', 'Incursion', 'Other'], index=None,
+                                 #placeholder="Choose...", key="game_s")
+        # mission_pack = st.selectbox(st.selectbox('Mission Pack',['Strike Force (2k)', 'Incursion (1k)', 'Combat Partol'], index=None, placeholder="Choose...")
+        st.write("**Your Details**")
+        # Extract the name from Discord metadata
+        p1_name = st.text_input("Your Discord Name*", value=discord_name, key="p1_username", disabled=True)
+        # 1. Allegiance Dropdown
+        p1_all_df = p1_df_system_factions[p1_df_system_factions['short_name'] == 'KT']
+        p1_all = st.selectbox("Your Allegiance", p1_all_df['allegiance'].unique(), index=None,
+                              placeholder="Choose...", key="p1_all_sel")
+        # 2. Faction Dropdown (MUST use filtered options)
+        if p1_all:
+            # We filter the dataframe here
+            p1_fac_df = p1_all_df[p1_all_df['allegiance'] == p1_all]
+            # We use faction_df to get the unique names for the options
+            p1_fac = st.selectbox("Your Faction", p1_fac_df['faction'].unique(), index=None,
+                                  placeholder="Choose...", key="p1_fac_sel")
+        else:
+            p1_fac = st.selectbox("Your Faction", [], disabled=True)
+        # 3. Sub-Faction Dropdown
+        if p1_fac:
+            p1_sub_df = p1_fac_df[p1_fac_df['faction'] == p1_fac]
+            p1_sub = st.selectbox("Your Kill Team", p1_sub_df['subfaction'].unique(), index=None,
+                                  placeholder="Choose...", key="p1_sub_sel")
+            
+            # Logic for dynamic min/max
+            if p1_sub:
+                # Get the specific data for the selected subfaction
+                selected_sub = p1_sub_df[p1_sub_df['subfaction'] == p1_sub].iloc[0]
+                min_val = int(selected_sub['kt_min_op'])
+                max_val = int(selected_sub['kt_max_op'])
+                
+                # Disable if min and max are the same
+                is_disabled = (min_val == max_val)
+                
+                p1_op_count = st.number_input(
+                    "Number of Operatives?*", 
+                    min_value=min_val, 
+                    max_value=max_val, 
+                    value=min_val, # Default to min
+                    disabled=is_disabled,
+                    key="p1_op_count"
+                )
+            else:
+                st.number_input("Number of Operatives?*", disabled=True, key="p1_op_count_placeholder")
+        else:
+            p1_sub = st.selectbox("Your Kill Team", [], disabled=True)
+            st.number_input("Number of Operatives?*", disabled=True, key="p1_op_count_init")
+
+        st.write("**Opponent Details**")
+
+        # 1. Fetch all profiles from Supabase to check names against
+        # You should wrap this in st.cache_data if your club gets very large
+        profiles_resp = supabase.table("profiles").select("id, full_name").execute()
+        db_profiles = profiles_resp.data  # List of dicts: {'id': '...', 'full_name': '...'}
+        # 2. Text Input for Opponent
+        p2_input = st.text_input("Opponent Name*", key="p2_username",
+                                 help="Type their Discord User Name to link their profile")
+        # 3. Validation Step
+        p2_id = None
+        p2_name = None
+        p2_custom_name = None
+
+        if p2_input:
+            search_term = p2_input.strip().lower()
+
+            # Use fillna to prevent crashes on nulls in DB
+            mask = (p2_df_account['username'].fillna('').str.lower() == search_term) | \
+                   (p2_df_account['full_name'].fillna('').str.lower() == search_term)
+
+            matched_rows = p2_df_account[mask]
+
+            if not matched_rows.empty:
+                user_row = matched_rows.iloc[0]
+                p2_id = user_row['id']
+                # Assign the found name to p2_name
+                p2_name = user_row['full_name'] if user_row['full_name'] else user_row['username']
+                st.success(f"✅ User found! Linked to **{p2_name}**.")
+            else:
+                p2_id = None
+                p2_name = p2_input
+                st.warning("⚠️ User not found. Recording as 'Guest'.")
+
+        # 1. Allegiance Dropdown
+        p2_all_df = p2_df_system_factions[p2_df_system_factions['short_name'] == 'KT']
+        p2_all = st.selectbox("Opponents Allegiance", p2_all_df['allegiance'].unique(), index=None,
+                              placeholder="Choose...", key="p2_all_sel")
+        # 2. Faction Dropdown (MUST use filtered options)
+        if p2_all:
+            # We filter the dataframe here
+            p2_fac_df = p2_all_df[p2_all_df['allegiance'] == p2_all]
+            # We use faction_df to get the unique names for the options
+            p2_fac = st.selectbox("Opponents Faction", p2_fac_df['faction'].unique(), index=None,
+                                  placeholder="Choose...", key="p2_fac_sel")
+        else:
+            p2_fac = st.selectbox("Opponents Faction", [], disabled=True)
+        # 3. Sub-Faction Dropdown
+        if p2_fac:
+            p2_sub_df = p2_fac_df[p2_fac_df['faction'] == p2_fac]
+            p2_sub = st.selectbox("Opponents Kill Team", p2_sub_df['subfaction'].unique(), index=None,
+                                  placeholder="Choose...", key="p2_sub_sel")
+            
+            # Logic for dynamic min/max
+            if p2_sub:
+                # Get the specific data for the selected subfaction
+                selected_sub = p2_sub_df[p2_sub_df['subfaction'] == p2_sub].iloc[0]
+                min_val = int(selected_sub['kt_min_op'])
+                max_val = int(selected_sub['kt_max_op'])
+                
+                # Disable if min and max are the same
+                is_disabled = (min_val == max_val)
+                
+                p2_op_count = st.number_input(
+                    "Number of Operatives?*", 
+                    min_value=min_val, 
+                    max_value=max_val, 
+                    value=min_val, # Default to min
+                    disabled=is_disabled,
+                    key="p2_op_count"
+                )
+            else:
+                st.number_input("Number of Operatives?*", disabled=True, key="p2_op_count_placeholder")
+        else:
+            p2_sub = st.selectbox("Opponents Kill Team", [], disabled=True)
+            st.number_input("Number of Operatives?*", disabled=True, key="p2_op_count_init")
+
+        attacker_id = None
+        defender_id = None
+        went_first_id = None
+
+        options = ["You", "Opponent"]
+        went_first = st.segmented_control(
+            "Who went first?", options, selection_mode="single", key="went_first"
+        )
+        attacking_player = st.segmented_control(
+            "Who is the attacker?", options, selection_mode="single", key="attacking_player"
+        )
+
+        if st.button("Proceed to Scoring"):
+            # 1. Define your conditions
+            names_entered = p1_name and p2_name
+            allegiance_selected = p1_all and p2_all
+            factions_selected = p1_fac and p2_fac
+            sub_factions_selected = p1_sub and p2_sub
+            actual_p2_id = p2_id if (p2_id and p2_id != p2_name) else None
+
+            if not names_entered:
+                st.error("❌ Both player names are mandatory.")
+            elif not sub_factions_selected:
+                st.error("❌ Both players must select an Allegiance, Faction and Subfaction.")
+            else:
+                # 2. Assign Attacker / Defender
+                if attacking_player == "You":
+                    attacker_id = st.session_state.user.id
+                    defender_id = actual_p2_id
+                else:
+                    attacker_id = actual_p2_id
+                    defender_id = st.session_state.user.id
+                # 3. Assign Went First
+                if went_first == "You":
+                    went_first_id = st.session_state.user.id
+                else:
+                    went_first_id = actual_p2_id
+
+                # Lookup IDs
+                p1_row = p1_df_system_factions[p1_df_system_factions['subfaction'] == p1_sub].iloc[0]
+                p2_row = p2_df_system_factions[p2_df_system_factions['subfaction'] == p2_sub].iloc[0]
+
+                # Store data for the next page
+                st.session_state.game_data = {
+                    "system_id": p1_row['system_id'],
+                    "p1_id": st.session_state.user.id,
+                    "p1_name": p1_name,
+                    "p1_all": p1_all,
+                    "p1_fac": p1_fac,
+                    "p1_sub": p1_sub,
+                    "p2_id": actual_p2_id,
+                    "p2_name": p2_name,
+                    "p1_all": p1_all,
+                    "p2_fac": p2_fac,
+                    "p2_sub": p2_sub,
+                    "p1_fac_id": p1_row['faction_id'],
+                    "p2_fac_id": p2_row['faction_id'],
+                    "p1_op_count": p1_op_count,
+                    "p2_op_count": p2_op_count,
+                    "attacker_id": attacker_id,
+                    "defender_id": defender_id,
+                    "went_first_id": went_first_id,
+                    "game_size": "Kill Team"
+                }
+
+                # FIX 2: Switch the page and rerun
+                st.session_state.page = "KT_scores"
+                st.rerun()
+
+    elif st.session_state.page == "KT_scores":
+
+        st.subheader("Game Scores")
+        st.divider()
+
+        system_id = st.session_state.game_data.get("system_id", None)
+        game_size = st.session_state.game_data.get("game_size", None)
+
+        attacker_id = st.session_state.game_data.get("attacker_id", None)
+        defender_id = st.session_state.game_data.get("defender_id", None)
+        went_first_id = st.session_state.game_data.get("went_first_id", None)
+
+        p1_id = st.session_state.game_data.get("p1_id", None)
+        p1_name = st.session_state.game_data.get("p1_name", None)
+        p1_fac_id = st.session_state.game_data.get("p1_fac_id", None)
+        p1_all = st.session_state.game_data.get("p1_all", None)
+        p1_fac = st.session_state.game_data.get("p1_fac", None)
+        p1_sub = st.session_state.game_data.get("p1_sub", None)
+        p1_op_count = st.session_state.game_data.get("p1_op_count", None)
+
+        p2_id = st.session_state.game_data.get("p2_id", None)
+        p2_name = st.session_state.game_data.get("p2_name", None)
+        p2_fac_id = st.session_state.game_data.get("p2_fac_id", None)
+        p2_all = st.session_state.game_data.get("p2_all", None)
+        p2_fac = st.session_state.game_data.get("p2_fac", None)
+        p2_sub = st.session_state.game_data.get("p2_sub", None)
+        p2_op_count = st.session_state.game_data.get("p2_op_count", None)
+        
+        # 1. The Data Entry Form
+        if not st.session_state.confirm_submit:
+            
+            # The lookup table based on your image
+            # Format: {starting_count: [Grade 1 threshold, Grade 2, Grade 3, Grade 4, Grade 5]}
+            KILL_GRADE_MAPPING = {
+                5:  [1, 2, 3, 4, 5],
+                6:  [1, 2, 4, 5, 6],
+                7:  [1, 3, 4, 6, 7],
+                8:  [2, 3, 5, 6, 8],
+                9:  [2, 4, 5, 7, 9],
+                10: [2, 4, 6, 8, 10],
+                11: [2, 4, 7, 9, 11],
+                12: [2, 5, 7, 10, 12],
+                13: [3, 5, 8, 10, 13],
+                14: [3, 6, 8, 11, 14]
+            }
+            
+            def calculate_kill_grade(kills, enemy_starting_count):
+                """Returns the Kill Grade (0-5) based on kills and enemy starting size."""
+                if enemy_starting_count not in KILL_GRADE_MAPPING or kills == 0:
+                    return 0
+                
+                thresholds = KILL_GRADE_MAPPING[enemy_starting_count]
+                grade = 0
+                # Iterate through thresholds; index + 1 is the grade
+                for i, threshold in enumerate(thresholds):
+                    if kills >= threshold:
+                        grade = i + 1
+                return grade
+            
+            with st.form("score_submission_form"):
+                col3, col4 = st.columns(2)
+                with col3:
+                    st.subheader(f"{p1_name}")
+                    st.write(f"**{p1_fac}**")
+                    st.write(f"{p1_sub}")
+                    p1_pri = st.number_input("Crit Op Score*", 0, 6, key="p1_p")
+                    p1_sec = st.number_input("Tac Op Score*", 0, 6, key="p1_s")
+                    p1_kills = st.number_input("Operatives Killed*", 0, p2_op_count, key="p1_kills")
+                    if st.toggle("Battle Ready?*", key="p1_br"):
+                        p1_br = 2
+                    else:
+                        p1_br = 0
+                    if st.toggle("Slain Enemy Leader?*", key="p1_killed_warlord"):
+                        p1_killed_warlord = True
+                    else:
+                        p1_killed_warlord = False
+                    if st.toggle("Tabled Opponent?*", key="p1_tabled_opponent"):
+                        p1_tabled_opponent = True
+                    else:
+                        p1_tabled_opponent = False
+                with col4:
+                    st.subheader(f"{p2_name}")
+                    st.write(f"**{p2_fac}**")
+                    st.write(f"{p2_sub}")
+                    p2_pri = st.number_input("Crit Op Score*", 0, 6, key="p2_p")
+                    p2_sec = st.number_input("Tac Op Score*", 0, 6, key="p2_s")
+                    p2_kills = st.number_input("Operatives Killed?*", 0, p1_op_count, key="p2_kills")
+                    if st.toggle("Battle Ready?*", key="p2_br"):
+                        p2_br = 2
+                    else:
+                        p2_br = 0
+                    if st.toggle("Slain Enemy Leader?*", key="p2_killed_warlord"):
+                        p2_killed_warlord = True
+                    else:
+                        p2_killed_warlord = False
+                    if st.toggle("Tabled Opponent?*", key="p2_tabled_opponent"):
+                        p2_tabled_opponent = True
+                    else:
+                        p2_tabled_opponent = False
+                    
+
+                # Use the form submit button to move to confirmation
+                submit_scores = st.form_submit_button("Review Results")
+
+                if submit_scores:
+                    
+                    p1_kill_grade = calculate_kill_grade(p1_kills, p2_op_count)
+                    p2_kill_grade = calculate_kill_grade(p2_kills, p1_op_count)
+                    
+                    st.session_state.temp_scores = {
+                        "p1_pri": p1_pri, "p1_sec": p1_sec, "p1_kills": p1_kills, "p1_kill_grade": p1_kill_grade, "p1_br": p1_br, "p1_killed_warlord": p1_killed_warlord, "p1_tabled_opponent": p1_tabled_opponent,
+                        "p2_pri": p2_pri, "p2_sec": p2_sec, "p2_kills": p2_kills, "p2_kill_grade": p2_kill_grade, "p2_br": p2_br, "p2_killed_warlord": p2_killed_warlord, "p2_tabled_opponent": p2_tabled_opponent
+                    }
+                    st.session_state.confirm_submit = True
+                    st.rerun()
+
+        # 2. The "Are You Sure?" Pop-up (Visualised as a Container)
+        else:
+            st.warning("⚠️ **Confirm Game Results**")
+            st.write("Please review the details below. **These cannot currently be changed after posting.**")
+            # Display all gathered info
+            setup = st.session_state.game_data
+            scores = st.session_state.temp_scores
+            
+            # Calculate Totals
+            p1_total = scores['p1_pri'] + scores['p1_sec'] + scores['p1_kill_grade'] + scores['p1_br']
+            p2_total = scores['p2_pri'] + scores['p2_sec'] + scores['p2_kill_grade'] + scores['p2_br']
+
+            # Determine Results
+            if p1_total > p2_total:
+                winner_id, loser_id = setup['p1_id'], setup['p2_id']
+                is_draw = False
+            elif p2_total > p1_total:
+                winner_id, loser_id = setup['p2_id'], setup['p1_id']
+                is_draw = False
+            else:
+                winner_id, loser_id = None, None
+                is_draw = True
+
+            col_a, col_b = st.columns(2)
+            col_a.write(f"Name: **{setup['p1_name']}**"
+                        f"\n\nFaction: {setup['p1_fac']}"
+                        f"\n\nKill Team: {setup['p1_sub']}"
+                        f"\n\nCrit Op: {scores['p1_pri']}"
+                        f"\n\nTac Op: {scores['p1_sec']}"
+                        f"\n\nKill Op: {scores['p1_kill_grade']}"
+                        f"\n\nBattle Ready: {scores['p1_br']}")
+            col_b.write(f"Name: **{setup['p2_name']}**"
+                        f"\n\nFaction: {setup['p2_fac']}"
+                        f"\n\nKill Team: {setup['p2_sub']}"
+                        f"\n\nCrit Op: {scores['p2_pri']}"
+                        f"\n\nTac Op: {scores['p2_sec']}"
+                        f"\n\nKill Op: {scores['p2_kill_grade']}"
+                        f"\n\nBattle Ready: {scores['p2_br']}")
+
+            c1, c2 = st.columns(2)
+
+            def clean_id(val):
+                # If the value is 'krystal' or any other name string, return None
+                if isinstance(val, str) and len(val) < 30:
+                    return None
+                return val
+
+            if c1.button("✅ Yes, Post Results", type="primary", use_container_width=True):
+                # --- DATABASE INSERT LOGIC HERE ---
+                # inserting game data into table
+                match_details = {
+                        "game_system_id": setup['system_id'],
+                        "event_id": None,
+                        "round_id": None,
+                        "mission_id": None,
+                        "game_size": setup['game_size'],
+                        "player_1_id": setup['p1_id'],
+                        "p1_faction_id": setup['p1_fac_id'],
+                        "p1_score_01": scores['p1_pri'],
+                        "p1_score_02": scores['p1_sec'],
+                        "p1_score_03": scores['p1_br'],
+                        "p1_score_04": scores['p1_kill_grade'],
+                        "p1_score_05": scores['p1_kills'],
+                        "p1_score_total": scores['p1_pri'] + scores['p1_sec'] + scores['p1_kill_grade'] + scores['p1_br'],
+                        "p1_score_mar": p1_total - p2_total,
+                        "player_2_id": clean_id(setup['p2_id']),
+                        "player_2_name": setup['p2_name'],
+                        "p2_faction_id": setup['p2_fac_id'],
+                        "p2_score_01": scores['p2_pri'],
+                        "p2_score_02": scores['p2_sec'],
+                        "p2_score_03": scores['p2_br'],
+                        "p2_score_04": scores['p2_kill_grade'],
+                        "p2_score_05": scores['p2_kills'],
+                        "p2_score_total": scores['p2_pri'] + scores['p2_sec'] + scores['p2_kill_grade'] + scores['p2_br'],
+                        "p2_score_mar": p2_total - p1_total,
+                        "went_first_id": clean_id(setup['went_first_id']),
+                        "winner_id": clean_id(winner_id),
+                        "loser_id": clean_id(loser_id),
+                        "attacker_id": clean_id(setup['attacker_id']),
+                        "defender_id": clean_id(setup['defender_id']),
+                        "is_draw": is_draw,
+                        # "played_at": ,
+                        "recorded_by":  setup['p1_id'],
+                        # "club_id": ,
+                        "p1_killed_warlord": scores['p1_killed_warlord'],
+                        "p2_killed_warlord": scores['p2_killed_warlord'],
+                        "p1_tabled_opponent": scores['p1_tabled_opponent'],
+                        "p2_tabled_opponent": scores['p2_tabled_opponent'],
+                    }
+
+                supabase.table("matches").insert(match_details).execute()
+
+                st.success("Game posted to Supabase!")
+
+                st.session_state.game_data = {}
+                st.session_state.temp_scores = {}
+                st.session_state.confirm_submit = False
+                st.session_state.page = None  # Go back to home
+                st.rerun()
+                #st.session_state.selected_system = "40K"
+                #st.session_state.page = None
+                #st.rerun()
+
+            if c2.button("❌ No, Edit Scores", use_container_width=True):
+                st.session_state.confirm_submit = False
+                st.rerun()
+
+
     elif st.session_state.page == "Events":
         st.header("Events")
         st.divider()
@@ -825,98 +1616,120 @@ else:
     elif st.session_state.page == "Graphs":
         st.header("Graphs")
         st.divider()
-        
-        def show_faction_win_rates(df):
-            st.subheader(f"📊 {selected_system} Faction Meta")
-    
-            # Data processing
-            p1_data = df[['p1_faction', 'p1_score_total', 'p2_score_total']].copy()
-            p1_data.columns = ['faction', 'score', 'opp_score']
-            p2_data = df[['p2_faction', 'p2_score_total', 'p1_score_total']].copy()
-            p2_data.columns = ['faction', 'score', 'opp_score']
-            
-            combined = pd.concat([p1_data, p2_data])
-            combined['is_win'] = (combined['score'] > combined['opp_score']).astype(int)
-            
-            stats = combined.groupby('faction').agg(Total=('faction', 'count'), Wins=('is_win', 'sum')).reset_index()
-            stats['Win_Rate'] = (stats['Wins'] / stats['Total'] * 100).round(1)
-    
-            # Sort ascending for horizontal bars so the highest is at the top
-            stats = stats.sort_values(by='Win_Rate', ascending=True)
-        
-            # Swap x and y; hide the color continuous scale (show_scale=False)
-            fig = px.bar(
-                stats, 
-                x='Win_Rate', 
-                y='faction', 
-                text='Win_Rate', 
-                color='Win_Rate', 
-                color_continuous_scale='RdYlGn', 
-                height=500,
-                orientation='h'
-            )
-        
-            # Add the 50% threshold line
-            fig.add_vline(x=50, line_dash="dash", line_color="white", annotation_text="50% Mark")
-        
-            # Clean up layout: hide the color bar and set x-axis range
-            fig.update_layout(
-                xaxis_range=[0, 100],
-                coloraxis_showscale=False,
-                xaxis_title="Win Rate (%)",
-                yaxis_title="Faction"
-            )
-            
-            fig.update_traces(texttemplate='%{text}%', textposition='outside')
-        
-            st.plotly_chart(fig, use_container_width=True)
-        
 
-        def show_faction_turnout(df):
-            st.subheader(f"🍕 {selected_system} Faction Turnout")
-            combined = pd.concat([df[['p1_faction']].rename(columns={'p1_faction':'f'}), df[['p2_faction']].rename(columns={'p2_faction':'f'})])
-            stats = combined['f'].value_counts().reset_index()
-            stats.columns = ['Faction', 'Count']
-            fig = px.pie(stats, values='Count', names='Faction', hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
-            st.plotly_chart(fig, use_container_width=True)
-
-        def show_allegiance_points_pie(df):
-            st.subheader(f"🍰 {selected_system} Points per Allegiance")
-            p1 = df[['p1_allegiance', 'p1_score_total']].rename(columns={'p1_allegiance':'a', 'p1_score_total':'s'})
-            p2 = df[['p2_allegiance', 'p2_score_total']].rename(columns={'p2_allegiance':'a', 'p2_score_total':'s'})
-            combined = pd.concat([p1, p2])
-            agg = combined.groupby('a')['s'].sum().reset_index().sort_values('s', ascending=False)
-            agg['label'] = agg['a'] + " (" + agg['s'].astype(str) + " pts)"
-            fig = px.pie(agg, values='s', names='label', hole=0.5, title=f"Total Event Points: {agg['s'].sum():,}")
-            fig.update_traces(textinfo='percent+label')
-            fig.update_layout(showlegend=False)
-            st.plotly_chart(fig, use_container_width=True)
-        
+        # --- STEP 1: INITIAL DATA FETCH & SYSTEM SELECTION ---
+        # We must define selected_system FIRST to avoid the NameError
         system_res = supabase.table("match_results").select("system_name").execute()
+
         if system_res.data:
+            # Get unique systems for the dropdown
             system_options = sorted(list(set([row['system_name'] for row in system_res.data if row['system_name']])))
             selected_system = st.selectbox("Select System to View Reports", system_options)
-    
-            # Fetch filtered data
+
+            # --- STEP 2: SETUP DYNAMIC LABELS & COLUMN MAPPING ---
+            # Now that selected_system is defined, we can set these variables
+            is_kt = selected_system == "KT" # Adjust if your DB uses "Kill Team"
+            label = "Subfaction" if is_kt else "Faction"
+            f_col = "p1_subfaction" if is_kt else "p1_faction"
+            opp_f_col = "p2_subfaction" if is_kt else "p2_faction"
+
+            # --- STEP 3: DEFINE REPORT FUNCTIONS ---
+            def show_faction_win_rates(df, label, f_col, opp_f_col):
+                st.subheader(f"📊 {selected_system} {label} Meta")
+        
+                p1_data = df[[f_col, 'p1_score_total', 'p2_score_total']].copy()
+                p1_data.columns = ['unit', 'score', 'opp_score']
+                p2_data = df[[opp_f_col, 'p2_score_total', 'p1_score_total']].copy()
+                p2_data.columns = ['unit', 'score', 'opp_score']
+                
+                combined = pd.concat([p1_data, p2_data])
+                combined['is_win'] = (combined['score'] > combined['opp_score']).astype(int)
+                
+                stats = combined.groupby('unit').agg(Total=('unit', 'count'), Wins=('is_win', 'sum')).reset_index()
+                stats['Win_Rate'] = (stats['Wins'] / stats['Total'] * 100).round(1)
+                stats = stats.sort_values(by='Win_Rate', ascending=True)
+            
+                fig = px.bar(
+                    stats, 
+                    x='Win_Rate', 
+                    y='unit', 
+                    text='Win_Rate', 
+                    color='Win_Rate', 
+                    color_continuous_scale='RdYlGn', 
+                    height=500,
+                    orientation='h'
+                )
+            
+                fig.add_vline(x=50, line_dash="dash", line_color="white", annotation_text="50% Mark")
+                fig.update_layout(
+                    xaxis_range=[0, 100],
+                    coloraxis_showscale=False,
+                    xaxis_title="Win Rate (%)",
+                    yaxis_title=label 
+                )
+                fig.update_traces(texttemplate='%{text}%', textposition='outside')
+                st.plotly_chart(fig, use_container_width=True)
+            
+            def show_faction_turnout(df, label, f_col, opp_f_col):
+                st.subheader(f"👥 {selected_system} {label} Turnout")
+                
+                # Combine both players to get total representation
+                combined = pd.concat([
+                    df[[f_col]].rename(columns={f_col:'f'}), 
+                    df[[opp_f_col]].rename(columns={opp_f_col:'f'})
+                ])
+                stats = combined['f'].value_counts().reset_index()
+                stats.columns = [label, 'Players']
+                stats = stats.sort_values('Players', ascending=True) # Ascending for better bar display
+            
+                fig = px.bar(
+                    stats, 
+                    x='Players', 
+                    y=label, 
+                    orientation='h',
+                    text='Players',
+                    color_discrete_sequence=['#636EFA'] # Solid color for turnout
+                )
+                fig.update_layout(height=max(400, len(stats) * 30)) # Dynamic height for scrolling
+                fig.update_traces(textposition='outside')
+                st.plotly_chart(fig, use_container_width=True)
+            
+            def show_allegiance_points(df):
+                st.subheader(f"⚔️ {selected_system} Points by Allegiance")
+                
+                p1 = df[['p1_allegiance', 'p1_score_total']].rename(columns={'p1_allegiance':'a', 'p1_score_total':'s'})
+                p2 = df[['p2_allegiance', 'p2_score_total']].rename(columns={'p2_allegiance':'a', 'p2_score_total':'s'})
+                combined = pd.concat([p1, p2])
+                
+                agg = combined.groupby('a')['s'].sum().reset_index().sort_values('s', ascending=True)
+                
+                fig = px.bar(
+                    agg, 
+                    x='s', 
+                    y='a', 
+                    orientation='h',
+                    labels={'s': 'Total Points Scored', 'a': 'Allegiance'},
+                    text='s',
+                    color='s',
+                    color_continuous_scale='Viridis'
+                )
+                fig.update_layout(coloraxis_showscale=False)
+                fig.update_traces(textposition='outside')
+                st.plotly_chart(fig, use_container_width=True)
+
+            # --- STEP 4: FETCH FILTERED DATA & RUN REPORTS ---
             res = supabase.table("match_results").select("*").eq("system_name", selected_system).execute()
             if res.data:
-                raw_df = pd.DataFrame(res.data)
-                
-                # Apply Global Pre-Filters
-                system_df = raw_df[
-                    (raw_df['system_name'] == selected_system)
-                ].copy()
+                system_df = pd.DataFrame(res.data)
                 
                 if not system_df.empty:
-                    # --- STEP 3: RUN REPORTS IN ORDER ---
-                    show_faction_win_rates(system_df)
+                    show_faction_win_rates(system_df, label, f_col, opp_f_col)
                     st.divider()
-                    show_faction_turnout(system_df)
+                    show_faction_turnout(system_df, label, f_col, opp_f_col)
                     st.divider()
-                    show_allegiance_points_pie(system_df)
-        
+                    show_allegiance_points(system_df)
                 else:
-                    st.warning("No valid match data found after filtering out results.")
+                    st.warning(f"No valid match data found for {selected_system}.")
         else:
             st.info("No games found in the database.")
 
