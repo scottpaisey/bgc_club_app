@@ -1618,7 +1618,6 @@ else:
         st.divider()
 
         # --- STEP 1: INITIAL DATA FETCH & SYSTEM SELECTION ---
-        # We must define selected_system FIRST to avoid the NameError
         system_res = supabase.table("match_results").select("system_name").execute()
 
         if system_res.data:
@@ -1627,13 +1626,13 @@ else:
             selected_system = st.selectbox("Select System to View Reports", system_options)
 
             # --- STEP 2: SETUP DYNAMIC LABELS & COLUMN MAPPING ---
-            # Now that selected_system is defined, we can set these variables
-            is_kt = selected_system == "KT" # Adjust if your DB uses "Kill Team"
+            is_kt = selected_system == "KT" 
             label = "Subfaction" if is_kt else "Faction"
             f_col = "p1_subfaction" if is_kt else "p1_faction"
             opp_f_col = "p2_subfaction" if is_kt else "p2_faction"
 
             # --- STEP 3: DEFINE REPORT FUNCTIONS ---
+            
             def show_faction_win_rates(df, label, f_col, opp_f_col):
                 st.subheader(f"📊 {selected_system} {label} Meta")
         
@@ -1649,6 +1648,10 @@ else:
                 stats['Win_Rate'] = (stats['Wins'] / stats['Total'] * 100).round(1)
                 stats = stats.sort_values(by='Win_Rate', ascending=True)
             
+                # Smart Logic: If winrate is small (<15%), show text outside. 
+                # We use 15 here because % bars are often wider.
+                positions = ["inside" if val > 15 else "outside" for val in stats['Win_Rate']]
+
                 fig = px.bar(
                     stats, 
                     x='Win_Rate', 
@@ -1656,42 +1659,63 @@ else:
                     text='Win_Rate', 
                     color='Win_Rate', 
                     color_continuous_scale='RdYlGn', 
-                    height=500,
                     orientation='h'
                 )
             
-                fig.add_vline(x=50, line_dash="dash", line_color="white", annotation_text="50% Mark")
+                fig.add_vline(x=50, line_dash="dash", line_color="white", annotation_text="50%")
+                
                 fig.update_layout(
-                    xaxis_range=[0, 100],
+                    height=max(500, len(stats) * 30), # Dynamic scrolling height
+                    xaxis=dict(range=[0, 115], title="Win Rate (%)"), # 115 to give buffer for outside text
+                    yaxis=dict(title=""),
                     coloraxis_showscale=False,
-                    xaxis_title="Win Rate (%)",
-                    yaxis_title=label 
+                    margin=dict(l=0, r=10, t=30, b=30)
                 )
-                fig.update_traces(texttemplate='%{text}%', textposition='outside')
+                
+                fig.update_traces(
+                    texttemplate='%{text}%', 
+                    textposition=positions,
+                    insidetextanchor='end',
+                    cliponaxis=False
+                )
                 st.plotly_chart(fig, use_container_width=True)
             
             def show_faction_turnout(df, label, f_col, opp_f_col):
                 st.subheader(f"👥 {selected_system} {label} Turnout")
                 
-                # Combine both players to get total representation
                 combined = pd.concat([
                     df[[f_col]].rename(columns={f_col:'f'}), 
                     df[[opp_f_col]].rename(columns={opp_f_col:'f'})
                 ])
                 stats = combined['f'].value_counts().reset_index()
                 stats.columns = [label, 'Players']
-                stats = stats.sort_values('Players', ascending=True) # Ascending for better bar display
-            
+                stats = stats.sort_values('Players', ascending=True) 
+
+                # Smart Logic: Threshold is 10% of the highest turnout
+                max_val = stats['Players'].max()
+                positions = ["inside" if val > (max_val * 0.1) else "outside" for val in stats['Players']]
+
                 fig = px.bar(
                     stats, 
                     x='Players', 
                     y=label, 
                     orientation='h',
                     text='Players',
-                    color_discrete_sequence=['#636EFA'] # Solid color for turnout
+                    color_discrete_sequence=['#636EFA'] 
                 )
-                fig.update_layout(height=max(400, len(stats) * 30)) # Dynamic height for scrolling
-                fig.update_traces(textposition='outside')
+                
+                fig.update_layout(
+                    height=max(400, len(stats) * 30),
+                    xaxis=dict(range=[0, max_val * 1.15], title="Player Count"),
+                    yaxis=dict(title=""),
+                    margin=dict(l=0, r=10, t=30, b=30)
+                )
+                
+                fig.update_traces(
+                    textposition=positions, 
+                    insidetextanchor='end',
+                    cliponaxis=False
+                )
                 st.plotly_chart(fig, use_container_width=True)
             
             def show_allegiance_points(df):
@@ -1703,22 +1727,40 @@ else:
                 
                 agg = combined.groupby('a')['s'].sum().reset_index().sort_values('s', ascending=True)
                 
+                # Smart Logic: Threshold is 10% of the highest score
+                max_val = agg['s'].max()
+                positions = ["inside" if val > (max_val * 0.1) else "outside" for val in agg['s']]
+
                 fig = px.bar(
                     agg, 
                     x='s', 
                     y='a', 
                     orientation='h',
-                    labels={'s': 'Total Points Scored', 'a': 'Allegiance'},
+                    labels={'s': 'Total Points', 'a': 'Allegiance'},
                     text='s',
                     color='s',
                     color_continuous_scale='Viridis'
                 )
-                fig.update_layout(coloraxis_showscale=False)
-                fig.update_traces(textposition='outside')
+                
+                fig.update_layout(
+                    height=300, # Fixed height since allegiances are few
+                    xaxis=dict(range=[0, max_val * 1.15], title="Total Points"),
+                    yaxis=dict(title=""),
+                    coloraxis_showscale=False,
+                    margin=dict(l=0, r=10, t=30, b=30)
+                )
+                
+                fig.update_traces(
+                    textposition=positions, 
+                    insidetextanchor='end',
+                    cliponaxis=False
+                )
                 st.plotly_chart(fig, use_container_width=True)
 
-            # --- STEP 4: FETCH FILTERED DATA & RUN REPORTS ---
+            # --- STEP 4: EXECUTE ---
+            # Only fetch data for the selected system
             res = supabase.table("match_results").select("*").eq("system_name", selected_system).execute()
+            
             if res.data:
                 system_df = pd.DataFrame(res.data)
                 
