@@ -1694,7 +1694,7 @@ else:
                 fig.update_traces(textposition='outside')
                 st.plotly_chart(fig, use_container_width=True)
             
-            def show_allegiance_points_bar(df):
+            def show_allegiance_points(df):
                 st.subheader(f"⚔️ {selected_system} Points by Allegiance")
                 
                 p1 = df[['p1_allegiance', 'p1_score_total']].rename(columns={'p1_allegiance':'a', 'p1_score_total':'s'})
@@ -1727,7 +1727,7 @@ else:
                     st.divider()
                     show_faction_turnout(system_df, label, f_col, opp_f_col)
                     st.divider()
-                    show_allegiance_points_pie(system_df)
+                    show_allegiance_points(system_df)
                 else:
                     st.warning(f"No valid match data found for {selected_system}.")
         else:
