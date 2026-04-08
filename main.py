@@ -1343,8 +1343,10 @@ else:
         except Exception as e:
             print(e)
         st.subheader("Game Details")
-        game_size = st.selectbox('Game Size', ['Strike Force', 'Incursion', 'Other'], index=None,
-                                 placeholder="Choose...", key="game_s")
+        #game_size = st.selectbox('Game Size', ['1000', '800', 'Other'], index=None,
+                                 #placeholder="Choose...", key="game_s")
+                                
+        game_size = st.number_input("Game Size", 0, 1500, key="game_s")
         # mission_pack = st.selectbox(st.selectbox('Mission Pack',['Strike Force (2k)', 'Incursion (1k)', 'Combat Partol'], index=None, placeholder="Choose...")
         st.write("**Your Details**")
         # Extract the name from Discord metadata
@@ -1409,7 +1411,7 @@ else:
             p2_sub = st.selectbox("Opponents Army List", p2_sub_df['subfaction'].unique(), index=None,
                                   placeholder="Choose...", key="p2_sub_sel")
         else:
-            p2_fac = st.selectbox("Opponents Army List", [], disabled=True)
+            p2_sub = st.selectbox("Opponents Army List", [], disabled=True)
 
         attacker_id = None
         defender_id = None
@@ -1459,12 +1461,12 @@ else:
                     "p1_id": st.session_state.user.id,
                     "p1_name": p1_name,
                     "p1_all": p1_all,
-                    "p1_fac": p1_fac,
+                    #"p1_fac": p1_fac,
                     "p1_sub": p1_sub,
                     "p2_id": actual_p2_id,
                     "p2_name": p2_name,
                     "p1_all": p1_all,
-                    "p2_fac": p2_fac,
+                    #"p2_fac": p2_fac,
                     "p2_sub": p2_sub,
                     "p1_fac_id": p1_row['faction_id'],
                     "p2_fac_id": p2_row['faction_id'],
@@ -1494,14 +1496,14 @@ else:
         p1_name = st.session_state.game_data.get("p1_name", None)
         p1_fac_id = st.session_state.game_data.get("p1_fac_id", None)
         p1_all = st.session_state.game_data.get("p1_all", None)
-        p1_fac = st.session_state.game_data.get("p1_fac", None)
+        #p1_fac = st.session_state.game_data.get("p1_fac", None)
         p1_sub = st.session_state.game_data.get("p1_sub", None)
 
         p2_id = st.session_state.game_data.get("p2_id", None)
         p2_name = st.session_state.game_data.get("p2_name", None)
         p2_fac_id = st.session_state.game_data.get("p2_fac_id", None)
         p2_all = st.session_state.game_data.get("p2_all", None)
-        p2_fac = st.session_state.game_data.get("p2_fac", None)
+        #p2_fac = st.session_state.game_data.get("p2_fac", None)
         p2_sub = st.session_state.game_data.get("p2_sub", None)
 
         # 1. The Data Entry Form
@@ -1510,14 +1512,14 @@ else:
                 col3, col4 = st.columns(2)
                 with col3:
                     st.subheader(f"{p1_name}")
-                    st.write(f"**{p1_fac}**")
+                    #st.write(f"**{p1_fac}**")
                     st.write(f"{p1_sub}")
-                    p1_pri = st.number_input("Primary Score*", 0, 45, key="p1_p")
-                    p1_sec = st.number_input("Secondary Score*", 0, 45, key="p1_s")
-                    if st.toggle("Battle Ready?*", key="p1_br"):
-                        p1_br = 10
-                    else:
-                        p1_br = 0
+                    p1_pri = st.number_input("Total Score*", 0, 20, key="p1_p")
+                    #p1_sec = st.number_input("Secondary Score*", 0, 45, key="p1_s")
+                    #if st.toggle("Battle Ready?*", key="p1_br"):
+                        #p1_br = 10
+                    #else:
+                        #p1_br = 0
                     if st.toggle("Slain Enemy Warlord?*", key="p1_killed_warlord"):
                         p1_killed_warlord = True
                     else:
@@ -1528,14 +1530,14 @@ else:
                         p1_tabled_opponent = False
                 with col4:
                     st.subheader(f"{p2_name}")
-                    st.write(f"**{p2_fac}**")
+                    #st.write(f"**{p2_fac}**")
                     st.write(f"{p2_sub}")
-                    p2_pri = st.number_input("Primary Score*", 0, 45, key="p2_p")
-                    p2_sec = st.number_input("Secondary Score*", 0, 45, key="p2_s")
-                    if st.toggle("Battle Ready?*", key="p2_br"):
-                        p2_br = 10
-                    else:
-                        p2_br = 0
+                    p2_pri = st.number_input("Total Score*", 0, 20, key="p2_p")
+                    #p2_sec = st.number_input("Secondary Score*", 0, 45, key="p2_s")
+                    #if st.toggle("Battle Ready?*", key="p2_br"):
+                        #p2_br = 10
+                    #else:
+                        #p2_br = 0
                     if st.toggle("Slain Enemy Warlord?*", key="p2_killed_warlord"):
                         p2_killed_warlord = True
                     else:
@@ -1551,8 +1553,8 @@ else:
 
                 if submit_scores:
                     st.session_state.temp_scores = {
-                        "p1_pri": p1_pri, "p1_sec": p1_sec, "p1_br": p1_br, "p1_killed_warlord": p1_killed_warlord, "p1_tabled_opponent": p1_tabled_opponent,
-                        "p2_pri": p2_pri, "p2_sec": p2_sec, "p2_br": p2_br, "p2_killed_warlord": p2_killed_warlord, "p2_tabled_opponent": p2_tabled_opponent
+                        "p1_pri": p1_pri, "p1_killed_warlord": p1_killed_warlord, "p1_tabled_opponent": p1_tabled_opponent,
+                        "p2_pri": p2_pri, "p2_killed_warlord": p2_killed_warlord, "p2_tabled_opponent": p2_tabled_opponent
                     }
                     st.session_state.confirm_submit = True
                     st.rerun()
@@ -1565,8 +1567,8 @@ else:
             setup = st.session_state.game_data
             scores = st.session_state.temp_scores
             # Calculate Totals
-            p1_total = scores['p1_pri'] + scores['p1_sec'] + scores['p1_br']
-            p2_total = scores['p2_pri'] + scores['p2_sec'] + scores['p2_br']
+            p1_total = scores['p1_pri']
+            p2_total = scores['p2_pri']
 
             # Determine Results
             if p1_total > p2_total:
@@ -1581,17 +1583,17 @@ else:
 
             col_a, col_b = st.columns(2)
             col_a.write(f"Name: **{setup['p1_name']}**"
-                        f"\n\nFaction: {setup['p1_fac']}"
-                        f"\n\nDetatchment: {setup['p1_sub']}"
-                        f"\n\nPrimary: {scores['p1_pri']}"
-                        f"\n\nSecondary: {scores['p1_sec']}"
-                        f"\n\nBattle Ready: {scores['p1_br']}")
+                        #f"\n\nFaction: {setup['p1_fac']}"
+                        f"\n\nTotal Score: {setup['p1_sub']}"
+                        f"\n\nTotal Score: {scores['p1_pri']}")
+                        #f"\n\nSecondary: {scores['p1_sec']}"
+                        #f"\n\nBattle Ready: {scores['p1_br']}")
             col_b.write(f"Name: **{setup['p2_name']}**"
-                        f"\n\nFaction: {setup['p2_fac']}"
-                        f"\n\nDetatchment: {setup['p2_sub']}"
-                        f"\n\nPrimary: {scores['p2_pri']}"
-                        f"\n\nSecondary: {scores['p2_sec']}"
-                        f"\n\nBattle Ready: {scores['p2_br']}")
+                        #f"\n\nFaction: {setup['p2_fac']}"
+                        f"\n\nArmy List: {setup['p2_sub']}"
+                        f"\n\nTotal Score: {scores['p2_pri']}")
+                        #f"\n\nSecondary: {scores['p2_sec']}"
+                        #f"\n\nBattle Ready: {scores['p2_br']}")
 
             c1, c2 = st.columns(2)
 
@@ -1613,21 +1615,21 @@ else:
                         "player_1_id": setup['p1_id'],
                         "p1_faction_id": setup['p1_fac_id'],
                         "p1_score_01": scores['p1_pri'],
-                        "p1_score_02": scores['p1_sec'],
-                        "p1_score_03": scores['p1_br'],
+                        "p1_score_02": 0,
+                        "p1_score_03": 0,
                         "p1_score_04": 0,
                         "p1_score_05": 0,
-                        "p1_score_total": scores['p1_pri'] + scores['p1_sec'] + scores['p1_br'],
+                        "p1_score_total": scores['p1_pri'],
                         "p1_score_mar": p1_total - p2_total,
                         "player_2_id": clean_id(setup['p2_id']),
                         "player_2_name": setup['p2_name'],
                         "p2_faction_id": setup['p2_fac_id'],
                         "p2_score_01": scores['p2_pri'],
-                        "p2_score_02": scores['p2_sec'],
-                        "p2_score_03": scores['p2_br'],
+                        "p2_score_02": 0,
+                        "p2_score_03": 0,
                         "p2_score_04": 0,
                         "p2_score_05": 0,
-                        "p2_score_total": scores['p2_pri'] + scores['p2_sec'] + scores['p2_br'],
+                        "p2_score_total": scores['p2_pri'],
                         "p2_score_mar": p2_total - p1_total,
                         "went_first_id": clean_id(setup['went_first_id']),
                         "winner_id": clean_id(winner_id),
@@ -1653,7 +1655,7 @@ else:
                 st.session_state.confirm_submit = False
                 # st.session_state.page = None  # Go back to home
                 # st.rerun()
-                st.session_state.selected_system = "40K"
+                st.session_state.selected_system = "MESBG"
                 st.session_state.page = None
                 st.rerun()
 
