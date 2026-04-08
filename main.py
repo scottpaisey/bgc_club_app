@@ -1625,7 +1625,7 @@ else:
             selected_system = st.selectbox("Select System to View Reports", system_options)
 
             # --- STEP 2: SETUP DYNAMIC LABELS & COLUMN MAPPING ---
-            is_kt = selected_system == "KT" 
+            is_kt = selected_system in ("KT", "MESBG")
             label = "Subfaction" if is_kt else "Faction"
             f_col = "p1_subfaction" if is_kt else "p1_faction"
             opp_f_col = "p2_subfaction" if is_kt else "p2_faction"
