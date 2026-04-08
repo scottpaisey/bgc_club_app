@@ -1175,10 +1175,10 @@ else:
                     p1_pri = st.number_input("Crit Op Score*", 0, 6, key="p1_p")
                     p1_sec = st.number_input("Tac Op Score*", 0, 6, key="p1_s")
                     p1_kills = st.number_input("Operatives Killed*", 0, p2_op_count, key="p1_kills")
-                    if st.toggle("Battle Ready?*", key="p1_br"):
-                        p1_br = 2
-                    else:
-                        p1_br = 0
+                    #if st.toggle("Battle Ready?*", key="p1_br"):
+                        #p1_br = 2
+                    #else:
+                        #p1_br = 0
                     if st.toggle("Slain Enemy Leader?*", key="p1_killed_warlord"):
                         p1_killed_warlord = True
                     else:
@@ -1194,10 +1194,10 @@ else:
                     p2_pri = st.number_input("Crit Op Score*", 0, 6, key="p2_p")
                     p2_sec = st.number_input("Tac Op Score*", 0, 6, key="p2_s")
                     p2_kills = st.number_input("Operatives Killed?*", 0, p1_op_count, key="p2_kills")
-                    if st.toggle("Battle Ready?*", key="p2_br"):
-                        p2_br = 2
-                    else:
-                        p2_br = 0
+                    #if st.toggle("Battle Ready?*", key="p2_br"):
+                        #p2_br = 2
+                    #else:
+                        #p2_br = 0
                     if st.toggle("Slain Enemy Leader?*", key="p2_killed_warlord"):
                         p2_killed_warlord = True
                     else:
@@ -1217,8 +1217,8 @@ else:
                     p2_kill_grade = calculate_kill_grade(p2_kills, p1_op_count)
                     
                     st.session_state.temp_scores = {
-                        "p1_pri": p1_pri, "p1_sec": p1_sec, "p1_kills": p1_kills, "p1_kill_grade": p1_kill_grade, "p1_br": p1_br, "p1_killed_warlord": p1_killed_warlord, "p1_tabled_opponent": p1_tabled_opponent,
-                        "p2_pri": p2_pri, "p2_sec": p2_sec, "p2_kills": p2_kills, "p2_kill_grade": p2_kill_grade, "p2_br": p2_br, "p2_killed_warlord": p2_killed_warlord, "p2_tabled_opponent": p2_tabled_opponent
+                        "p1_pri": p1_pri, "p1_sec": p1_sec, "p1_kills": p1_kills, "p1_kill_grade": p1_kill_grade, "p1_killed_warlord": p1_killed_warlord, "p1_tabled_opponent": p1_tabled_opponent,
+                         "p2_pri": p2_pri, "p2_sec": p2_sec, "p2_kills": p2_kills, "p2_kill_grade": p2_kill_grade, "p2_killed_warlord": p2_killed_warlord, "p2_tabled_opponent": p2_tabled_opponent
                     }
                     st.session_state.confirm_submit = True
                     st.rerun()
@@ -1232,8 +1232,8 @@ else:
             scores = st.session_state.temp_scores
             
             # Calculate Totals
-            p1_total = scores['p1_pri'] + scores['p1_sec'] + scores['p1_kill_grade'] + scores['p1_br']
-            p2_total = scores['p2_pri'] + scores['p2_sec'] + scores['p2_kill_grade'] + scores['p2_br']
+            p1_total = scores['p1_pri'] + scores['p1_sec'] + scores['p1_kill_grade']
+            p2_total = scores['p2_pri'] + scores['p2_sec'] + scores['p2_kill_grade']
 
             # Determine Results
             if p1_total > p2_total:
@@ -1252,15 +1252,14 @@ else:
                         f"\n\nKill Team: {setup['p1_sub']}"
                         f"\n\nCrit Op: {scores['p1_pri']}"
                         f"\n\nTac Op: {scores['p1_sec']}"
-                        f"\n\nKill Op: {scores['p1_kill_grade']}"
-                        f"\n\nBattle Ready: {scores['p1_br']}")
+                        f"\n\nKill Op: {scores['p1_kill_grade']}")
+                        
             col_b.write(f"Name: **{setup['p2_name']}**"
                         f"\n\nFaction: {setup['p2_fac']}"
                         f"\n\nKill Team: {setup['p2_sub']}"
                         f"\n\nCrit Op: {scores['p2_pri']}"
                         f"\n\nTac Op: {scores['p2_sec']}"
-                        f"\n\nKill Op: {scores['p2_kill_grade']}"
-                        f"\n\nBattle Ready: {scores['p2_br']}")
+                        f"\n\nKill Op: {scores['p2_kill_grade']}")
 
             c1, c2 = st.columns(2)
 
@@ -1283,7 +1282,7 @@ else:
                         "p1_faction_id": setup['p1_fac_id'],
                         "p1_score_01": scores['p1_pri'],
                         "p1_score_02": scores['p1_sec'],
-                        "p1_score_03": scores['p1_br'],
+                        "p1_score_03": 0,
                         "p1_score_04": scores['p1_kill_grade'],
                         "p1_score_05": scores['p1_kills'],
                         "p1_score_total": scores['p1_pri'] + scores['p1_sec'] + scores['p1_kill_grade'] + scores['p1_br'],
@@ -1293,7 +1292,7 @@ else:
                         "p2_faction_id": setup['p2_fac_id'],
                         "p2_score_01": scores['p2_pri'],
                         "p2_score_02": scores['p2_sec'],
-                        "p2_score_03": scores['p2_br'],
+                        "p2_score_03": 0,
                         "p2_score_04": scores['p2_kill_grade'],
                         "p2_score_05": scores['p2_kills'],
                         "p2_score_total": scores['p2_pri'] + scores['p2_sec'] + scores['p2_kill_grade'] + scores['p2_br'],
