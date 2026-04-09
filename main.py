@@ -129,7 +129,7 @@ else:
         collapse_sidebar()
         st.rerun()
     if st.session_state.get("user_role") == "system_admin":
-        if st.sidebar.button("Graphs_"):
+        if st.sidebar.button("Graphs_2"):
             st.session_state.page = "Graphs_2"
             collapse_sidebar()
             st.rerun()
@@ -2142,10 +2142,10 @@ else:
                 st.subheader(f"📊 {selected_system} {label}: {mode}")
         
                 # Combine P1 and P2 data including player names for "Player Count"
-                p1 = df[[f_col, 'p1_name', 'p1_score_total', 'p2_score_total']].copy()
+                p1 = df[[f_col, 'display_p1_name', 'p1_score_total', 'p2_score_total']].copy()
                 p1.columns = ['unit', 'player', 'score', 'opp_score']
                 
-                p2 = df[[opp_f_col, 'p2_name', 'p2_score_total', 'p1_score_total']].copy()
+                p2 = df[[opp_f_col, 'display_p2_name', 'p2_score_total', 'p1_score_total']].copy()
                 p2.columns = ['unit', 'player', 'score', 'opp_score']
                 
                 combined = pd.concat([p1, p2])
