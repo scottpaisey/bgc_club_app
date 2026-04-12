@@ -128,6 +128,11 @@ else:
         st.session_state.page = "Graphs"
         collapse_sidebar()
         st.rerun()
+    if st.session_state.get("user_role") == "system_admin":
+        if st.sidebar.button("Graphs_2"):
+            st.session_state.page = "Graphs_2"
+            collapse_sidebar()
+            st.rerun()
     if st.sidebar.button("Personal Stats"):
         st.session_state.page = "Personal Stats"
         collapse_sidebar()
@@ -2108,6 +2113,121 @@ else:
         else:
             st.info("No games found in the database.")
 
+    elif st.session_state.page == "Graphs_2":
+        st.header("Graphs_2")
+        st.divider()
+
+        # --- STEP 1: INITIAL DATA FETCH & SYSTEM SELECTION ---
+        system_res = supabase.table("match_results").select("system_name").execute()
+
+        if system_res.data:
+            system_options = sorted(list(set([row['system_name'] for row in system_res.data if row['system_name']])))
+            selected_system = st.selectbox("Select System to View Reports", system_options)
+
+            # --- STEP 2: SETUP DYNAMIC LABELS & COLUMN MAPPING ---
+            is_kt = selected_system in ("KT", "MESBG")
+            label = "Subfaction" if is_kt else "Faction"
+            f_col = "p1_subfaction" if is_kt else "p1_faction"
+            opp_f_col = "p2_subfaction" if is_kt else "p2_faction"
+
+            # --- NEW: UI TOGGLE FOR METRIC ---
+            view_mode = st.radio(
+                "Select Metric to Visualize:",
+                ["Win Rate", "Player Count", "Games Played"],
+                horizontal=True
+            )
+
+            # --- STEP 3: CONSOLIDATED DYNAMIC REPORT FUNCTION ---
+            def show_faction_meta(df, label, f_col, opp_f_col, mode):
+                st.subheader(f"📊 {selected_system} {label}: {mode}")
+        
+                # Combine P1 and P2 data including player names for "Player Count"
+                p1 = df[[f_col, 'display_p1_name', 'p1_score_total', 'p2_score_total']].copy()
+                p1.columns = ['unit', 'player', 'score', 'opp_score']
+                
+                p2 = df[[opp_f_col, 'display_p2_name', 'p2_score_total', 'p1_score_total']].copy()
+                p2.columns = ['unit', 'player', 'score', 'opp_score']
+                
+                combined = pd.concat([p1, p2])
+                combined['is_win'] = (combined['score'] > combined['opp_score']).astype(int)
+                
+                # Aggregate all stats at once
+                stats = combined.groupby('unit').agg(
+                    Games=('unit', 'count'),
+                    Wins=('is_win', 'sum'),
+                    Players=('player', 'nunique')
+                ).reset_index()
+                
+                stats['Win_Rate'] = (stats['Wins'] / stats['Games'] * 100).round(1)
+
+                # Map UI selection to Data columns & Styling
+                if mode == "Win Rate":
+                    target_col = 'Win_Rate'
+                    chart_color = 'Win_Rate'
+                    color_scale = 'RdYlGn'
+                    suffix = "%"
+                elif mode == "Player Count":
+                    target_col = 'Players'
+                    chart_color = None # Static color
+                    color_scale = None
+                    suffix = ""
+                else: # Games Played
+                    target_col = 'Games'
+                    chart_color = None
+                    color_scale = None
+                    suffix = ""
+
+                stats = stats.sort_values(by=target_col, ascending=True)
+            
+                # Logic for text positioning
+                max_val = stats[target_col].max()
+                threshold = 15 if mode == "Win Rate" else (max_val * 0.2)
+                positions = ["inside" if val > threshold else "outside" for val in stats[target_col]]
+
+                fig = px.bar(
+                    stats, 
+                    x=target_col, 
+                    y='unit', 
+                    text=target_col, 
+                    color=chart_color, 
+                    color_continuous_scale=color_scale, 
+                    orientation='h',
+                    color_discrete_sequence=['#636EFA'] # Default blue if Win Rate isn't selected
+                )
+            
+                # Only add 50% line for Win Rate
+                if mode == "Win Rate":
+                    fig.add_vline(x=50, line_dash="dash", line_color="white", annotation_text="50%")
+                
+                fig.update_layout(
+                    height=max(500, len(stats) * 35),
+                    xaxis=dict(range=[0, max_val * 1.15], title=mode),
+                    yaxis=dict(title=""),
+                    coloraxis_showscale=False,
+                    margin=dict(l=0, r=10, t=30, b=30)
+                )
+                
+                fig.update_traces(
+                    texttemplate=f'%{{text}}{suffix}', 
+                    textposition=positions,
+                    insidetextanchor='end',
+                    cliponaxis=False
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+            # --- STEP 4: EXECUTE ---
+            res = supabase.table("match_results").select("*").eq("system_name", selected_system).execute()
+            
+            if res.data:
+                system_df = pd.DataFrame(res.data)
+                
+                if not system_df.empty:
+                    # Call the dynamic function based on radio button
+                    show_faction_meta(system_df, label, f_col, opp_f_col, view_mode)
+                else:
+                    st.warning(f"No valid match data found for {selected_system}.")
+        else:
+            st.info("No games found in the database.")
 
     elif st.session_state.page == "Personal Stats":
         st.header("👤 Your Career Dashboard")
