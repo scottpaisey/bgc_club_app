@@ -155,7 +155,7 @@ else:
         st.write(f"Most recent matches logged")
 
         # Fetch from your new view
-        res = supabase.table("match_results").select("*").order("game_date", desc=True).limit(10).execute()
+        res = supabase.table("match_results").select("*").order("game_date", desc=True).limit(50).execute()
         
         if res.data:
             recent_df = pd.DataFrame(res.data)
@@ -163,7 +163,7 @@ else:
             # 2. Convert to datetime (keep dayfirst=True)
             recent_df["game_date"] = pd.to_datetime(recent_df["game_date"], dayfirst=True)
             
-            st.subheader("Latest 10 Battle Reports")
+            st.subheader("Most Recent Battle Reports")
             st.dataframe(
                 recent_df,
                 column_order=(
