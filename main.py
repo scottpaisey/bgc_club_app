@@ -155,7 +155,7 @@ else:
         st.write(f"Most recent matches logged")
 
         # Fetch from your new view
-        res = supabase.table("match_results").select("*").order("game_date", desc=False).limit(50).execute()
+        res = supabase.table("match_results").select("*").order("game_date", desc=True).limit(50).execute()
         
         if res.data:
             recent_df = pd.DataFrame(res.data)
