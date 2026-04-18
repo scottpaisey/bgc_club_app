@@ -158,7 +158,7 @@ else:
         res = supabase.table("match_results").select("*").order("game_date", desc=False).limit(50).execute()
         if res.data:
             recent_df = pd.DataFrame(res.data)
-            recent_df["game_date"] = pd.to_datetime(recent_df["game_date"])
+            recent_df["game_date"] = pd.to_datetime(recent_df["game_date"], dayfirst=True)
             st.subheader("Latest 10 Battle Reports")
             st.dataframe(
                 recent_df,
