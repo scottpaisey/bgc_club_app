@@ -167,6 +167,7 @@ else:
             st.dataframe(
                 recent_df,
                 column_order=(
+                    "game_date_ord",
                     "game_date",
                     "system_name",
                     "display_p1_name",
