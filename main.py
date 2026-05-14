@@ -30,6 +30,22 @@ def get_supabase_client():
 
 supabase = get_supabase_client()
 
+
+
+def check_admin_access(supabase):
+    """Returns True if the logged-in user is an admin, False otherwise."""
+    if "user" not in st.session_state or st.session_state.user is None:
+        return False
+        
+    user_id = st.session_state.user.id
+    res = supabase.table("profiles").select("role").eq("id", user_id).maybe_single().execute()
+    
+    if res.data and res.data.get("role") in ["system_admin", "event_admin"]:
+        return True
+    return False
+
+
+
 # Initialize session state variables if they don't exist
 if "page" not in st.session_state:
     st.session_state.page = None
