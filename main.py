@@ -162,53 +162,205 @@ else:
 
         
 
+    # if st.session_state.page is None:
+    #     st.header("BGC Club App")
+    #     st.write(f"Welcome back, {st.session_state.user.user_metadata.get('full_name')}!")
+    #     # st.text(f"Here we will be hosting all of our club game data for you to use and analyse however you'd like!\n\n"
+    #     #         f"If you have any issues or want to submit a request for something new (new game system added, graph, etc.) then please contact scottpaisey in our Discord.")
+    #     st.divider()
+    #     st.write(f"Most recent matches logged")
+
+    #     # Fetch from your new view
+    #     res = supabase.table("match_results").select("*").eq("status", "Logged").order("game_date_ord", desc=True).limit(50).execute()
+        
+    #     if res.data:
+    #         recent_df = pd.DataFrame(res.data)
+            
+    #         # 2. Convert to datetime (keep dayfirst=True)
+    #         recent_df["game_date"] = pd.to_datetime(recent_df["game_date"], dayfirst=True)
+            
+    #         st.subheader("Most Recent Battle Reports")
+    #         st.dataframe(
+    #             recent_df,
+    #             column_order=(
+    #                 "game_date",
+    #                 "system_name",
+    #                 "display_p1_name",
+    #                 "p1_faction",
+    #                 "p1_score_total",
+    #                 "display_p2_name",
+    #                 "p2_faction",
+    #                 "p2_score_total"
+    #             ),
+    #             column_config={
+    #                 # 3. Use DateColumn to force the DD/MM/YYYY display format
+    #                 "game_date": st.column_config.DateColumn(
+    #                     "Date", 
+    #                     format="DD/MM/YYYY"
+    #                 ),
+    #                 "system_name": "System",
+    #                 "display_p1_name": "Player 1",
+    #                 "p1_faction": "P1 Faction",
+    #                 "p1_score_total": "P1 Score",
+    #                 "display_p2_name": "Player 2",
+    #                 "p2_faction": "P2 Faction",
+    #                 "p2_score_total": "P2 Score"
+    #             },
+    #             use_container_width=True,
+    #             hide_index=True
+    #         )
+    #     else:
+    #         st.info("No match history found yet. Go log some games!")
+    
     if st.session_state.page is None:
         st.header("BGC Club App")
         st.write(f"Welcome back, {st.session_state.user.user_metadata.get('full_name')}!")
-        # st.text(f"Here we will be hosting all of our club game data for you to use and analyse however you'd like!\n\n"
-        #         f"If you have any issues or want to submit a request for something new (new game system added, graph, etc.) then please contact scottpaisey in our Discord.")
         st.divider()
-        st.write(f"Most recent matches logged")
 
-        # Fetch from your new view
-        res = supabase.table("match_results").select("*").eq("status", "Logged").order("game_date_ord", desc=True).limit(50).execute()
+        # -------------------------------------------------------------
+        # 1. FETCH & PREPARE ALL LOGGED DATA
+        # -------------------------------------------------------------
+        res = (
+            supabase.table("match_results")
+            .select("*")
+            .eq("status", "Logged")
+            .order("game_date_ord", desc=True)
+            .limit(1000)
+            .execute()
+        )
         
         if res.data:
-            recent_df = pd.DataFrame(res.data)
+            all_df = pd.DataFrame(res.data)
             
-            # 2. Convert to datetime (keep dayfirst=True)
-            recent_df["game_date"] = pd.to_datetime(recent_df["game_date"], dayfirst=True)
+            # Layout: Left for metrics/chart, Right for recent raw feed
+            col_chart, col_recent = st.columns([3, 2])
             
-            st.subheader("Most Recent Battle Reports")
-            st.dataframe(
-                recent_df,
-                column_order=(
-                    "game_date",
-                    "system_name",
-                    "display_p1_name",
-                    "p1_faction",
-                    "p1_score_total",
-                    "display_p2_name",
-                    "p2_faction",
-                    "p2_score_total"
-                ),
-                column_config={
-                    # 3. Use DateColumn to force the DD/MM/YYYY display format
-                    "game_date": st.column_config.DateColumn(
-                        "Date", 
-                        format="DD/MM/YYYY"
-                    ),
-                    "system_name": "System",
-                    "display_p1_name": "Player 1",
-                    "p1_faction": "P1 Faction",
-                    "p1_score_total": "P1 Score",
-                    "display_p2_name": "Player 2",
-                    "p2_faction": "P2 Faction",
-                    "p2_score_total": "P2 Score"
-                },
-                use_container_width=True,
-                hide_index=True
-            )
+            # --- COLUMN 1: SYSTEM PIE CHART ---
+            with col_chart:
+                st.subheader("Games per System")
+                system_counts = all_df["system_name"].value_counts().reset_index()
+                system_counts.columns = ["System", "Games Played"]
+                
+                fig = px.pie(
+                    system_counts, 
+                    values="Games Played", 
+                    names="System", 
+                    hole=0.3,
+                    color_discrete_sequence=px.colors.qualitative.Pastel
+                )
+                fig.update_layout(
+                    margin=dict(t=10, b=10, l=10, r=10), 
+                    height=280,
+                    legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+            # --- COLUMN 2: RECENT MATCHES ---
+            with col_recent:
+                st.subheader("Most Recent Matches")
+                recent_df = all_df.head(5).copy()
+                
+                for _, row in recent_df.iterrows():
+                    st.markdown(f"**{row['system_name']}** • {row['game_date']}")
+                    st.caption(f"{row['display_p1_name']} ({row['p1_score_total']}) vs {row['display_p2_name']} ({row['p2_score_total']})")
+                    st.divider()
+
+            # -------------------------------------------------------------
+            # 2. DYNAMIC WIN RATE RANKINGS ENGINE
+            # -------------------------------------------------------------
+            st.divider()
+            st.header("🏆 Club Leaderboards")
+
+            def calculate_leaderboard(df_subset):
+                """Processes any slice of the data frame to compile individual records."""
+                player_stats = {}
+                
+                for _, row in df_subset.iterrows():
+                    p1 = row["display_p1_name"]
+                    p2 = row["display_p2_name"]
+                    winner = row["winner_name"]
+                    is_draw = row["is_draw"]
+                    
+                    # Process Player 1
+                    if p1 not in player_stats:
+                        player_stats[p1] = {"Played": 0, "Wins": 0, "Draws": 0}
+                    player_stats[p1]["Played"] += 1
+                    if is_draw:
+                        player_stats[p1]["Draws"] += 1
+                    elif winner == p1:
+                        player_stats[p1]["Wins"] += 1
+                        
+                    # Process Player 2 (Ignore if it is empty or a Guest string)
+                    if pd.notna(p2) and str(p2).strip() != "":
+                        if p2 not in player_stats:
+                            player_stats[p2] = {"Played": 0, "Wins": 0, "Draws": 0}
+                        player_stats[p2]["Played"] += 1
+                        if is_draw:
+                            player_stats[p2]["Draws"] += 1
+                        elif winner == p2:
+                            player_stats[p2]["Wins"] += 1
+
+                # Structural conversions
+                leaderboard_rows = []
+                for player, stats in player_stats.items():
+                    # Set minimum threshold to 2 matches to prevent unearned 100% win rates
+                    if stats["Played"] >= 2: 
+                        win_rate = (stats["Wins"] / stats["Played"]) * 100
+                        leaderboard_rows.append({
+                            "Player": player,
+                            "Played": stats["Played"],
+                            "Wins": stats["Wins"],
+                            "Draws": stats["Draws"],
+                            "Win Rate": round(win_rate, 1)
+                        })
+                
+                if not leaderboard_rows:
+                    return pd.DataFrame()
+                    
+                lb_df = pd.DataFrame(leaderboard_rows)
+                # Primary sorting on Win Rate, Secondary sorting on Experience (Played)
+                lb_df = lb_df.sort_values(by=["Win Rate", "Played"], ascending=[False, False]).reset_index(drop=True)
+                lb_df.index += 1  # Standard 1-based ranking index
+                return lb_df
+
+            # --- DISPLAY: ALL SYSTEMS GLOBAL BOARD ---
+            st.subheader("Top 25 Players (Overall - All Systems)")
+            overall_lb = calculate_leaderboard(all_df)
+            
+            if not overall_lb.empty:
+                st.dataframe(
+                    overall_lb.head(25),
+                    column_config={
+                        "Win Rate": st.column_config.NumberColumn("Win Rate", format="%.1f%%"),
+                    },
+                    use_container_width=True
+                )
+            else:
+                st.info("Play more matches to populate the overall leaderboard.")
+
+            # --- DISPLAY: SYSTEM SPECIFIC BOARDS ---
+            st.write("")
+            st.subheader("Top 5 Players by Game System")
+            
+            # Dynamically pull whatever unique systems are represented in the dataset
+            unique_systems = all_df["system_name"].unique()
+            system_tabs = st.tabs(list(unique_systems))
+            
+            for tab, system_name in zip(system_tabs, unique_systems):
+                with tab:
+                    system_matches = all_df[all_df["system_name"] == system_name]
+                    system_lb = calculate_leaderboard(system_matches)
+                    
+                    if not system_lb.empty:
+                        st.dataframe(
+                            system_lb.head(5),
+                            column_config={
+                                "Win Rate": st.column_config.NumberColumn("Win Rate", format="%.1f%%"),
+                            },
+                            use_container_width=True
+                        )
+                    else:
+                        st.info(f"Not enough data to calculate top players for {system_name}.")
         else:
             st.info("No match history found yet. Go log some games!")
 
