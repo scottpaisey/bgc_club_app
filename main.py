@@ -235,35 +235,56 @@ else:
             # Layout: Left for metrics/chart, Right for recent raw feed
             col_chart, col_recent = st.columns([3, 2])
             
-            # --- COLUMN 1: SYSTEM PIE CHART ---
-            with col_chart:
-                st.subheader("Games per System")
-                system_counts = all_df["system_name"].value_counts().reset_index()
-                system_counts.columns = ["System", "Games Played"]
-                
-                fig = px.pie(
-                    system_counts, 
-                    values="Games Played", 
-                    names="System", 
-                    hole=0.3,
-                    color_discrete_sequence=px.colors.qualitative.Pastel
-                )
-                fig.update_layout(
-                    margin=dict(t=10, b=10, l=10, r=10), 
-                    height=280,
-                    legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
-                )
-                st.plotly_chart(fig, use_container_width=True)
+            # -------------------------------------------------------------
+            # 1. VISUAL ANALYTICS (FULL WIDTH)
+            # -------------------------------------------------------------
+            st.subheader("Games per System")
+            system_counts = all_df["system_name"].value_counts().reset_index()
+            system_counts.columns = ["System", "Games Played"]
+            
+            # Draw the Pie Chart across the full container width
+            fig = px.pie(
+                system_counts, 
+                values="Games Played", 
+                names="System", 
+                hole=0.3,
+                color_discrete_sequence=px.colors.qualitative.Pastel
+            )
+            fig.update_layout(
+                margin=dict(t=10, b=10, l=10, r=10), 
+                height=300,
+                legend=dict(orientation="h", yanchor="bottom", y=-0.15, xanchor="center", x=0.5)
+            )
+            st.plotly_chart(fig, use_container_width=True)
 
-            # --- COLUMN 2: RECENT MATCHES ---
-            with col_recent:
-                st.subheader("Most Recent Matches")
-                recent_df = all_df.head(5).copy()
-                
-                for _, row in recent_df.iterrows():
-                    st.markdown(f"**{row['system_name']}** • {row['game_date']}")
-                    st.caption(f"{row['display_p1_name']} ({row['p1_score_total']}) vs {row['display_p2_name']} ({row['p2_score_total']})")
-                    st.divider()
+            # --- RECENT MATCHES TABLE (PLACED UNDER CHART) ---
+            st.write("")
+            st.subheader("⚔️ Recent Faction Matchups")
+            
+            # Grab the 5 most recent matches
+            recent_table_df = all_df.head(5).copy()
+            
+            st.dataframe(
+                recent_table_df,
+                column_order=(
+                    "game_date",
+                    "system_name",
+                    "p1_faction",
+                    "p1_score_total",
+                    "p2_score_total",
+                    "p2_faction"
+                ),
+                column_config={
+                    "game_date": "Date",
+                    "system_name": "System",
+                    "p1_faction": "Player 1 Faction",
+                    "p1_score_total": st.column_config.NumberColumn("P1 Score", format="%d"),
+                    "p2_score_total": st.column_config.NumberColumn("P2 Score", format="%d"),
+                    "p2_faction": "Player 2 Faction"
+                },
+                use_container_width=True,
+                hide_index=True
+            )
 
             # -------------------------------------------------------------
             # 2. DYNAMIC WIN RATE RANKINGS ENGINE
