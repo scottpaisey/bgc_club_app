@@ -2451,8 +2451,8 @@ else:
     
         render_event_manager_page(supabase)
 
-        else:
-            st.info("No events found in the database.")
+        # else:
+            # st.info("No events found in the database.")
     
   
     elif st.session_state.page == "Graphs":
