@@ -1,18 +1,27 @@
 import streamlit as st
-from supabase import create_client, Client
+from supabase import create_client, Client, ClientOptions
 from streamlit_js_eval import streamlit_js_eval
 from dotenv import load_dotenv
 import pandas as pd
 import plotly.express as px
 import time
 import os
+import requests
 
-import streamlit as st
-from supabase import create_client
-from dotenv import load_dotenv
-import os
+def post_to_discord_webhook(message_text):
+    """Sends a quick message alert to a specific Discord channel."""
+    webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
+    if not webhook_url:
+        return False
+        
+    payload = {"content": message_text}
+    try:
+        response = requests.post(webhook_url, json=payload)
+        return response.status_code == 204
+    except Exception:
+        return False
 
-from supabase import create_client, ClientOptions
+# from supabase import create_client, ClientOptions
 
 st.set_page_config(page_title="BGC Club App", page_icon="🎲")
 
