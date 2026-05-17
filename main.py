@@ -2275,6 +2275,9 @@ else:
                             }
                             try:
                                 supabase.table("events").insert(new_event).execute()
+                                # Trigger the Discord notification
+                                announcement = f"🎮 **New Event Created!** 🎮\n**{name}** ({event_type}) has been added! Sign ups are now open."
+                                post_to_discord_webhook(announcement)
                                 st.success(f"🎉 Event '{name}' created successfully!")
                                 time.sleep(1)
                                 st.rerun()
