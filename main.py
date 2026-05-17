@@ -2230,7 +2230,8 @@ else:
                     gs_map = {f"{gs['name']} ({gs['edition']})": gs['id'] for gs in game_systems}
                     selected_gs = st.selectbox("Game System", list(gs_map.keys())) if gs_map else None
                     
-                    submitted = st.form_submit_with_button("Create Event")
+                    # FIX: Changed from st.form_submit_with_button to st.form_submit_button
+                    submitted = st.form_submit_button("Create Event")
                     if submitted:
                         if not name or not event_type:
                             st.error("Event Name and Event Type are required.")
@@ -2287,7 +2288,8 @@ else:
                         with col5:
                             u_rounds = st.number_input("Rounds", min_value=0, value=int(active_event["rounds"] or 0))
                             
-                        update_submitted = st.form_submit_with_button("Save Changes")
+                        # FIX: Changed from st.form_submit_with_button to st.form_submit_button
+                        update_submitted = st.form_submit_button("Save Changes")
                         if update_submitted:
                             updated_data = {
                                 "name": u_name, "event_type": u_type, "status": u_status,
@@ -2314,6 +2316,7 @@ else:
                     
                     if parts:
                         for p in parts:
+                            # FIX: Assigned column configurations explicitly
                             col_name, col_status, col_del = st.columns([3, 2, 1])
                             col_name.write(f"👤 **{p['player_name'] or 'Unknown'}** (Score: {p['current_points']})")
                             
@@ -2342,7 +2345,8 @@ else:
                             target_profile_str = st.selectbox("Select Profile System User", list(profile_map.keys()))
                             custom_name = st.text_input("Override Player Display Name (Optional)")
                             
-                            add_submitted = st.form_submit_with_button("Add Player to Roster")
+                            # FIX: Changed from st.form_submit_with_button to st.form_submit_button
+                            add_submitted = st.form_submit_button("Add Player to Roster")
                             if add_submitted and target_profile_str:
                                 chosen_p = profile_map[target_profile_str]
                                 new_part = {
@@ -2404,7 +2408,8 @@ else:
                                         w_id = pair["player_1_id"] if p1_score > p2_score else (pair["player_2_id"] if p2_score > p1_score else None)
                                         l_id = pair["player_2_id"] if p1_score > p2_score else (pair["player_1_id"] if p2_score > p1_score else None)
                                         
-                                        if st.form_submit_with_button("Verify & Lock Match Scores"):
+                                        # FIX: Changed from st.form_submit_with_button to st.form_submit_button
+                                        if st.form_submit_button("Verify & Lock Match Scores"):
                                             try:
                                                 supabase.table("event_pairings").update({"is_completed": True}).eq("id", pair["id"]).execute()
                                                 
@@ -2448,11 +2453,7 @@ else:
                                         st.error(f"Failed to generate custom pairing: {e}")
                             else:
                                 st.warning("You must have a minimum of 2 users with 'Checked In' status on your roster to build pairings.")
-    
-        render_event_manager_page(supabase)
 
-        # else:
-            # st.info("No events found in the database.")
     
   
     elif st.session_state.page == "Graphs":
