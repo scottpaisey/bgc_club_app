@@ -137,8 +137,8 @@ else:
         st.session_state.page = "Log Games"
         collapse_sidebar()
         st.rerun()
-    if st.sidebar.button("Events"):
-        st.session_state.page = "Events"
+    if st.sidebar.button("Event Results"):
+        st.session_state.page = "Event_Results"
         collapse_sidebar()
         st.rerun()
     if st.sidebar.button("Graphs"):
@@ -162,6 +162,11 @@ else:
             st.session_state.page = "Graphs_2"
             collapse_sidebar()
             st.rerun()
+        if st.sidebar.button("Current Events"):
+            st.session_state.page = "Current_Events"
+            collapse_sidebar()
+            st.rerun()
+
     if st.session_state.get("user_role") in ("system_admin", "event_admin"):
         if st.sidebar.button("Event Manager"):
             st.session_state.page = "Event_Manager"
@@ -1875,8 +1880,8 @@ else:
                 st.rerun()
 
 
-    elif st.session_state.page == "Events":
-        st.header("Events")
+    elif st.session_state.page == "Event_Results":
+        st.header("Event Results")
         st.divider()
 
         # --- STEP 1: DEFINE ALL REPORT FUNCTIONS ---
