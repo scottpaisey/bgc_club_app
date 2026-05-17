@@ -2454,7 +2454,8 @@ else:
                             else:
                                 st.warning("You must have a minimum of 2 users with 'Checked In' status on your roster to build pairings.")
 
-    
+        render_event_manager_page(supabase)
+        
   
     elif st.session_state.page == "Graphs":
         st.header("Graphs")
