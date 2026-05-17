@@ -2174,10 +2174,13 @@ else:
                 game_systems = supabase.table("game_systems").select("id, name, edition").eq("is_active", True).execute().data
                 events_list = supabase.table("events").select("*").execute().data
                 all_profiles = supabase.table("profiles").select("id, username, full_name").execute().data
+                
+                # 🆕 ADD THIS LINE BELOW YOUR OTHER QUERIES:
+                event_types_data = supabase.table("event_type").select("event_type").execute().data
             except Exception as e:
                 st.error(f"Initialization error fetching lookup data: {e}")
                 return
-        
+
             # 2. Main Layout Split: Active Event Context Selection at the Top
             st.markdown("### 🎯 Active Event Context")
             if events_list:
@@ -2215,8 +2218,16 @@ else:
                 st.subheader("Create New Event")
                 with st.form("create_event_form", clear_on_submit=True):
                     name = st.text_input("Event Name*")
-                    event_type = st.text_input("Event Type* (e.g., Swiss, Single Elim)")
+                    
+                    # 🔄 REPLACE old event_type text_input with this:
+                    if event_types_data:
+                        type_options = [row["event_type"] for row in event_types_data]
+                        event_type = st.selectbox("Event Type*", type_options)
+                    else:
+                        event_type = st.text_input("Event Type* (Fallback - No types found in DB)", value="Swiss")
+                        
                     status = st.selectbox("Initial Status", ["upcoming", "ongoing"])
+
                     
                     col1, col2 = st.columns(2)
                     with col1:
