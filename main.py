@@ -2282,9 +2282,18 @@ else:
                     st.subheader(f"Editing: {active_event['name']}")
                     with st.form("update_event_form"):
                         u_name = st.text_input("Event Name", value=active_event["name"])
-                        u_type = st.text_input("Event Type", value=active_event["event_type"])
                         
+                        # 🔄 REPLACE old event_type text_input with this:
+                        if event_types_data:
+                            type_options = [row["event_type"] for row in event_types_data]
+                            # Default to current type if it exists in the list, otherwise default to index 0
+                            current_type_idx = type_options.index(active_event["event_type"]) if active_event["event_type"] in type_options else 0
+                            u_type = st.selectbox("Event Type", type_options, index=current_type_idx)
+                        else:
+                            u_type = st.text_input("Event Type", value=active_event["event_type"])
+                            
                         status_list = ["upcoming", "ongoing", "completed", "cancelled"]
+
                         u_status = st.selectbox("Status", status_list, index=status_list.index(active_event["status"]) if active_event["status"] in status_list else 0)
                         
                         s_date = pd.to_datetime(active_event["start_date"]).date() if active_event["start_date"] else pd.Timestamp.now().date()
