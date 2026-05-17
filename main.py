@@ -2187,7 +2187,7 @@ else:
             except Exception as e:
                 st.error(f"Initialization error fetching lookup data: {e}")
                 return
-
+        
             # 2. Main Layout Split: Active Event Context Selection at the Top
             st.markdown("### 🎯 Active Event Context")
             if events_list:
@@ -2224,7 +2224,8 @@ else:
             with tab1:
                 st.subheader("Create New Event")
                 with st.form("create_event_form", clear_on_submit=True):
-                    name = st.text_input("Event Name*")
+                    # Strip trailing spaces to prevent sneaky duplicate variations
+                    name = st.text_input("Event Name*").strip()
                     
                     if event_types_data:
                         type_options = [row["event_type"] for row in event_types_data]
@@ -2233,8 +2234,7 @@ else:
                         event_type = st.text_input("Event Type* (Fallback - No types found in DB)", value="Swiss")
                         
                     status = st.selectbox("Initial Status", ["upcoming", "ongoing"])
-
-                    
+        
                     col1, col2 = st.columns(2)
                     with col1:
                         start_date = st.date_input("Start Date", value=pd.Timestamp.now().date())
@@ -2252,11 +2252,16 @@ else:
                     gs_map = {f"{gs['name']} ({gs['edition']})": gs['id'] for gs in game_systems}
                     selected_gs = st.selectbox("Game System", list(gs_map.keys())) if gs_map else None
                     
-                    # FIX: Changed from st.form_submit_with_button to st.form_submit_button
                     submitted = st.form_submit_button("Create Event")
                     if submitted:
+                        # 🛡️ PROTECTION: Compile existing names in lower-case
+                        existing_names = [e["name"].lower().strip() for e in events_list] if events_list else []
+                        
                         if not name or not event_type:
                             st.error("Event Name and Event Type are required.")
+                        elif name.lower() in existing_names:
+                            # ❌ BLOCK DUPLICATE
+                            st.error(f"🚫 An event named '{name}' already exists. Please choose a unique name.")
                         else:
                             new_event = {
                                 "name": name,
@@ -2272,7 +2277,6 @@ else:
                             }
                             try:
                                 supabase.table("events").insert(new_event).execute()
-                                # Trigger the Discord notification
                                 announcement = f"🎮 **New Event Created!** 🎮\n**{name}** ({event_type}) has been added! Sign ups are now open."
                                 post_to_discord_webhook(announcement)
                                 st.success(f"🎉 Event '{name}' created successfully!")
@@ -2290,19 +2294,16 @@ else:
                 else:
                     st.subheader(f"Editing: {active_event['name']}")
                     with st.form("update_event_form"):
-                        u_name = st.text_input("Event Name", value=active_event["name"])
+                        u_name = st.text_input("Event Name", value=active_event["name"]).strip()
                         
-                        # 🔄 REPLACE old event_type text_input with this:
                         if event_types_data:
                             type_options = [row["event_type"] for row in event_types_data]
-                            # Default to current type if it exists in the list, otherwise default to index 0
                             current_type_idx = type_options.index(active_event["event_type"]) if active_event["event_type"] in type_options else 0
                             u_type = st.selectbox("Event Type", type_options, index=current_type_idx)
                         else:
                             u_type = st.text_input("Event Type", value=active_event["event_type"])
                             
                         status_list = ["upcoming", "ongoing", "completed", "cancelled"]
-
                         u_status = st.selectbox("Status", status_list, index=status_list.index(active_event["status"]) if active_event["status"] in status_list else 0)
                         
                         s_date = pd.to_datetime(active_event["start_date"]).date() if active_event["start_date"] else pd.Timestamp.now().date()
@@ -2322,21 +2323,34 @@ else:
                         with col5:
                             u_rounds = st.number_input("Rounds", min_value=0, value=int(active_event["rounds"] or 0))
                             
-                        # FIX: Changed from st.form_submit_with_button to st.form_submit_button
                         update_submitted = st.form_submit_button("Save Changes")
                         if update_submitted:
-                            updated_data = {
-                                "name": u_name, "event_type": u_type, "status": u_status,
-                                "start_date": u_start_date.isoformat(), "end_date": u_end_date.isoformat(),
-                                "min_players": u_min_players, "max_players": u_max_players, "rounds": u_rounds
-                            }
-                            try:
-                                supabase.table("events").update(updated_data).eq("id", active_event["id"]).execute()
-                                st.success("💾 Changes saved successfully!")
-                                time.sleep(1)
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"Error updating event: {e}")
+                            # 🛡️ PROTECTION: Verify name isn't clashing with a separate event name
+                            other_events_names = [
+                                e["name"].lower().strip() for e in events_list 
+                                if e["id"] != active_event["id"]
+                            ] if events_list else []
+                            
+                            if not u_name:
+                                st.error("Event Name cannot be empty.")
+                            elif u_name.lower() in other_events_names:
+                                st.error(f"🚫 Another event is already using the name '{u_name}'.")
+                            else:
+                                updated_data = {
+                                    "name": u_name, "event_type": u_type, "status": u_status,
+                                    "start_date": u_start_date.isoformat(), "end_date": u_end_date.isoformat(),
+                                    "min_players": u_min_players, "max_players": u_max_players, "rounds": u_rounds
+                                }
+                                try:
+                                    supabase.table("events").update(updated_data).eq("id", active_event["id"]).execute()
+                                    st.success("💾 Changes saved successfully!")
+                                    time.sleep(1)
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Error updating event: {e}")
+        
+            # (Tabs 3 and 4 remain exactly as they were written before)
+
         
             # =========================================================================
             # TAB 3: MANAGE PLAYERS
