@@ -1,18 +1,27 @@
 import streamlit as st
-from supabase import create_client, Client
+from supabase import create_client, Client, ClientOptions
 from streamlit_js_eval import streamlit_js_eval
 from dotenv import load_dotenv
 import pandas as pd
 import plotly.express as px
 import time
 import os
+import requests
 
-import streamlit as st
-from supabase import create_client
-from dotenv import load_dotenv
-import os
+def post_to_discord_webhook(message_text):
+    """Sends a quick message alert to a specific Discord channel."""
+    webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
+    if not webhook_url:
+        return False
+        
+    payload = {"content": message_text}
+    try:
+        response = requests.post(webhook_url, json=payload)
+        return response.status_code == 204
+    except Exception:
+        return False
 
-from supabase import create_client, ClientOptions
+# from supabase import create_client, ClientOptions
 
 st.set_page_config(page_title="BGC Club App", page_icon="🎲")
 
@@ -29,6 +38,22 @@ def get_supabase_client():
     return create_client(url, key, options=ClientOptions(flow_type="pkce"))
 
 supabase = get_supabase_client()
+
+
+
+def check_admin_access(supabase):
+    """Returns True if the logged-in user is an admin, False otherwise."""
+    if "user" not in st.session_state or st.session_state.user is None:
+        return False
+        
+    user_id = st.session_state.user.id
+    res = supabase.table("profiles").select("role").eq("id", user_id).maybe_single().execute()
+    
+    if res.data and res.data.get("role") in ["system_admin", "event_admin"]:
+        return True
+    return False
+
+
 
 # Initialize session state variables if they don't exist
 if "page" not in st.session_state:
@@ -112,6 +137,7 @@ else:
     # --- EVERYTHING BELOW RUNS ONLY WHEN LOGGED IN ---
     st.sidebar.success(f"Logged in as {st.session_state.user.user_metadata.get('full_name')}")
     # st.sidebar.code(f"DEBUG: Current Page = {st.session_state.page}")
+    st.sidebar.header("BGC Club App")
     if st.sidebar.button("Home"):
         st.session_state.page = None
         collapse_sidebar()
@@ -120,19 +146,14 @@ else:
         st.session_state.page = "Log Games"
         collapse_sidebar()
         st.rerun()
-    if st.sidebar.button("Events"):
-        st.session_state.page = "Events"
+    if st.sidebar.button("Event Results"):
+        st.session_state.page = "Event_Results"
         collapse_sidebar()
         st.rerun()
     if st.sidebar.button("Graphs"):
         st.session_state.page = "Graphs"
         collapse_sidebar()
         st.rerun()
-    if st.session_state.get("user_role") == "system_admin":
-        if st.sidebar.button("Graphs_2"):
-            st.session_state.page = "Graphs_2"
-            collapse_sidebar()
-            st.rerun()
     if st.sidebar.button("Personal Stats"):
         st.session_state.page = "Personal Stats"
         collapse_sidebar()
@@ -143,47 +164,246 @@ else:
         for key in list(st.session_state.keys()):
             del st.session_state[key]
         st.rerun()
+    if st.session_state.get("user_role") != "member":
+        st.sidebar.header("Admin Pages")
+    if st.session_state.get("user_role") == "system_admin":
+        if st.sidebar.button("Graphs_2"):
+            st.session_state.page = "Graphs_2"
+            collapse_sidebar()
+            st.rerun()
+        if st.sidebar.button("Current Events"):
+            st.session_state.page = "Current_Events"
+            collapse_sidebar()
+            st.rerun()
+
+    if st.session_state.get("user_role") in ("system_admin", "event_admin"):
+        if st.sidebar.button("Event Manager"):
+            st.session_state.page = "Event_Manager"
+            collapse_sidebar()
+            st.rerun()        
 
         
 
+    # if st.session_state.page is None:
+    #     st.header("BGC Club App")
+    #     st.write(f"Welcome back, {st.session_state.user.user_metadata.get('full_name')}!")
+    #     # st.text(f"Here we will be hosting all of our club game data for you to use and analyse however you'd like!\n\n"
+    #     #         f"If you have any issues or want to submit a request for something new (new game system added, graph, etc.) then please contact scottpaisey in our Discord.")
+    #     st.divider()
+    #     st.write(f"Most recent matches logged")
+
+    #     # Fetch from your new view
+    #     res = supabase.table("match_results").select("*").eq("status", "Logged").order("game_date_ord", desc=True).limit(50).execute()
+        
+    #     if res.data:
+    #         recent_df = pd.DataFrame(res.data)
+            
+    #         # 2. Convert to datetime (keep dayfirst=True)
+    #         recent_df["game_date"] = pd.to_datetime(recent_df["game_date"], dayfirst=True)
+            
+    #         st.subheader("Most Recent Battle Reports")
+    #         st.dataframe(
+    #             recent_df,
+    #             column_order=(
+    #                 "game_date",
+    #                 "system_name",
+    #                 "display_p1_name",
+    #                 "p1_faction",
+    #                 "p1_score_total",
+    #                 "display_p2_name",
+    #                 "p2_faction",
+    #                 "p2_score_total"
+    #             ),
+    #             column_config={
+    #                 # 3. Use DateColumn to force the DD/MM/YYYY display format
+    #                 "game_date": st.column_config.DateColumn(
+    #                     "Date", 
+    #                     format="DD/MM/YYYY"
+    #                 ),
+    #                 "system_name": "System",
+    #                 "display_p1_name": "Player 1",
+    #                 "p1_faction": "P1 Faction",
+    #                 "p1_score_total": "P1 Score",
+    #                 "display_p2_name": "Player 2",
+    #                 "p2_faction": "P2 Faction",
+    #                 "p2_score_total": "P2 Score"
+    #             },
+    #             use_container_width=True,
+    #             hide_index=True
+    #         )
+    #     else:
+    #         st.info("No match history found yet. Go log some games!")
+    
     if st.session_state.page is None:
         st.header("BGC Club App")
         st.write(f"Welcome back, {st.session_state.user.user_metadata.get('full_name')}!")
-        # st.text(f"Here we will be hosting all of our club game data for you to use and analyse however you'd like!\n\n"
-        #         f"If you have any issues or want to submit a request for something new (new game system added, graph, etc.) then please contact scottpaisey in our Discord.")
         st.divider()
-        st.write(f"Most recent matches logged")
 
-        # Fetch from your new view
-        res = supabase.table("match_results").select("*").order("game_date", desc=False).limit(10).execute()
+        # -------------------------------------------------------------
+        # 1. FETCH & PREPARE ALL LOGGED DATA
+        # -------------------------------------------------------------
+        res = (
+            supabase.table("match_results")
+            .select("*")
+            .eq("status", "Logged")
+            .order("game_date_ord", desc=True)
+            .limit(1000)
+            .execute()
+        )
+        
         if res.data:
-            recent_df = pd.DataFrame(res.data)
-            st.subheader("Latest 10 Battle Reports")
+            all_df = pd.DataFrame(res.data)
+            
+            # Layout: Left for metrics/chart, Right for recent raw feed
+            col_chart, col_recent = st.columns([3, 2])
+            
+            # -------------------------------------------------------------
+            # 1. VISUAL ANALYTICS (FULL WIDTH)
+            # -------------------------------------------------------------
+            st.subheader("Games per System")
+            system_counts = all_df["system_name"].value_counts().reset_index()
+            system_counts.columns = ["System", "Games Played"]
+            
+            # Draw the Pie Chart across the full container width
+            fig = px.pie(
+                system_counts, 
+                values="Games Played", 
+                names="System", 
+                hole=0.3,
+                color_discrete_sequence=px.colors.qualitative.Pastel
+            )
+            fig.update_layout(
+                margin=dict(t=10, b=10, l=10, r=10), 
+                height=300,
+                legend=dict(orientation="h", yanchor="bottom", y=-0.15, xanchor="center", x=0.5)
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+            # --- RECENT MATCHES TABLE (PLACED UNDER CHART) ---
+            st.write("")
+            st.subheader("⚔️ Recent Faction Matchups")
+            
+            # Grab the 5 most recent matches
+            recent_table_df = all_df.head(5).copy()
+            
             st.dataframe(
-                recent_df,
+                recent_table_df,
                 column_order=(
                     "game_date",
                     "system_name",
-                    "display_p1_name",
                     "p1_faction",
                     "p1_score_total",
-                    "display_p2_name",
-                    "p2_faction",
-                    "p2_score_total"
+                    "p2_score_total",
+                    "p2_faction"
                 ),
                 column_config={
                     "game_date": "Date",
                     "system_name": "System",
-                    "display_p1_name": "Player 1",
-                    "p1_faction": "P1 Faction",
-                    "p1_score_total": "P1 Score",
-                    "display_p2_name": "Player 2",
-                    "p2_faction": "P2 Faction",
-                    "p2_score_total": "P2 Score"
+                    "p1_faction": "Player 1 Faction",
+                    "p1_score_total": st.column_config.NumberColumn("P1 Score", format="%d"),
+                    "p2_score_total": st.column_config.NumberColumn("P2 Score", format="%d"),
+                    "p2_faction": "Player 2 Faction"
                 },
                 use_container_width=True,
                 hide_index=True
             )
+
+            # -------------------------------------------------------------
+            # 2. DYNAMIC WIN RATE RANKINGS ENGINE
+            # -------------------------------------------------------------
+            st.divider()
+            st.header("🏆 Club Leaderboards")
+
+            def calculate_leaderboard(df_subset):
+                """Processes any slice of the data frame to compile individual records."""
+                player_stats = {}
+                
+                for _, row in df_subset.iterrows():
+                    p1 = row["display_p1_name"]
+                    p2 = row["display_p2_name"]
+                    winner = row["winner_name"]
+                    is_draw = row["is_draw"]
+                    
+                    # Process Player 1
+                    if p1 not in player_stats:
+                        player_stats[p1] = {"Played": 0, "Wins": 0, "Draws": 0}
+                    player_stats[p1]["Played"] += 1
+                    if is_draw:
+                        player_stats[p1]["Draws"] += 1
+                    elif winner == p1:
+                        player_stats[p1]["Wins"] += 1
+                        
+                    # Process Player 2 (Ignore if it is empty or a Guest string)
+                    if pd.notna(p2) and str(p2).strip() != "":
+                        if p2 not in player_stats:
+                            player_stats[p2] = {"Played": 0, "Wins": 0, "Draws": 0}
+                        player_stats[p2]["Played"] += 1
+                        if is_draw:
+                            player_stats[p2]["Draws"] += 1
+                        elif winner == p2:
+                            player_stats[p2]["Wins"] += 1
+
+                # Structural conversions
+                leaderboard_rows = []
+                for player, stats in player_stats.items():
+                    # Set minimum threshold to 2 matches to prevent unearned 100% win rates
+                    if stats["Played"] >= 2: 
+                        win_rate = (stats["Wins"] / stats["Played"]) * 100
+                        leaderboard_rows.append({
+                            "Player": player,
+                            "Played": stats["Played"],
+                            "Wins": stats["Wins"],
+                            "Draws": stats["Draws"],
+                            "Win Rate": round(win_rate, 1)
+                        })
+                
+                if not leaderboard_rows:
+                    return pd.DataFrame()
+                    
+                lb_df = pd.DataFrame(leaderboard_rows)
+                # Primary sorting on Win Rate, Secondary sorting on Experience (Played)
+                lb_df = lb_df.sort_values(by=["Win Rate", "Played"], ascending=[False, False]).reset_index(drop=True)
+                lb_df.index += 1  # Standard 1-based ranking index
+                return lb_df
+
+            # --- DISPLAY: ALL SYSTEMS GLOBAL BOARD ---
+            st.subheader("Top 25 Players (Overall - All Systems)")
+            overall_lb = calculate_leaderboard(all_df)
+            
+            if not overall_lb.empty:
+                st.dataframe(
+                    overall_lb.head(25),
+                    column_config={
+                        "Win Rate": st.column_config.NumberColumn("Win Rate", format="%.1f%%"),
+                    },
+                    use_container_width=True
+                )
+            else:
+                st.info("Play more matches to populate the overall leaderboard.")
+
+            # --- DISPLAY: SYSTEM SPECIFIC BOARDS ---
+            st.write("")
+            st.subheader("Top 5 Players by Game System")
+            
+            # Dynamically pull whatever unique systems are represented in the dataset
+            unique_systems = all_df["system_name"].unique()
+            system_tabs = st.tabs(list(unique_systems))
+            
+            for tab, system_name in zip(system_tabs, unique_systems):
+                with tab:
+                    system_matches = all_df[all_df["system_name"] == system_name]
+                    system_lb = calculate_leaderboard(system_matches)
+                    
+                    if not system_lb.empty:
+                        st.dataframe(
+                            system_lb.head(5),
+                            column_config={
+                                "Win Rate": st.column_config.NumberColumn("Win Rate", format="%.1f%%"),
+                            },
+                            use_container_width=True
+                        )
+                    else:
+                        st.info(f"Not enough data to calculate top players for {system_name}.")
         else:
             st.info("No match history found yet. Go log some games!")
 
@@ -1669,8 +1889,8 @@ else:
                 st.rerun()
 
 
-    elif st.session_state.page == "Events":
-        st.header("Events")
+    elif st.session_state.page == "Event_Results":
+        st.header("Event Results")
         st.divider()
 
         # --- STEP 1: DEFINE ALL REPORT FUNCTIONS ---
@@ -1950,7 +2170,341 @@ else:
                     st.warning("No valid match data found after filtering out Dropped/Unplayed results.")
         else:
             st.info("No events found in the database.")
+
+    elif st.session_state.page == "Event_Manager":
+        st.header("Event Manager")
+        st.divider()
         
+        def render_event_manager_page(supabase):
+            st.title("🏆 Events Manager Dashboard")
+        
+            # 1. Fetch Core Setup Lists for Dropdowns
+            try:
+                game_systems = supabase.table("game_systems").select("id, name, edition").eq("is_active", True).execute().data
+                events_list = supabase.table("events").select("*").execute().data
+                all_profiles = supabase.table("profiles").select("id, username, full_name").execute().data
+                event_types_data = supabase.table("event_type").select("*").execute().data
+            except Exception as e:
+                st.error(f"Initialization error fetching lookup data: {e}")
+                return
+        
+            # 2. Main Layout Split: Active Event Context Selection at the Top
+            st.markdown("### 🎯 Active Event Context")
+            if events_list:
+                event_map = {f"{e['name']} ({e['status']})": e for e in events_list}
+                
+                # Keep track of active event index across form submissions
+                if "active_event_index" not in st.session_state:
+                    st.session_state.active_event_index = 0
+                    
+                selected_event_name = st.selectbox(
+                    "Choose Event to Manage:", 
+                    list(event_map.keys()),
+                    index=st.session_state.active_event_index
+                )
+                active_event = event_map[selected_event_name]
+                
+                # Sync the chosen list index back to state
+                st.session_state.active_event_index = list(event_map.keys()).index(selected_event_name)
+            else:
+                active_event = None
+                st.warning("No events found. Please use 'Create Event' below to add one first.")
+        
+            # 3. Horizontal Management Tabs (Keeps sidebar clean for your app navigation buttons)
+            tab1, tab2, tab3, tab4 = st.tabs([
+                "1️⃣ Create Event", 
+                "2️⃣ Manage Event", 
+                "3️⃣ Manage Players", 
+                "4️⃣ Manage Pairings"
+            ])
+        
+            # =========================================================================
+            # TAB 1: CREATE EVENT
+            # =========================================================================
+            with tab1:
+                st.subheader("Create New Event")
+                with st.form("create_event_form", clear_on_submit=True):
+                    # Strip trailing spaces to prevent sneaky duplicate variations
+                    name = st.text_input("Event Name*").strip()
+                    
+                    if event_types_data:
+                        type_options = [row["event_type"] for row in event_types_data]
+                        event_type = st.selectbox("Event Type*", type_options)
+                    else:
+                        event_type = st.text_input("Event Type* (Fallback - No types found in DB)", value="Swiss")
+                        
+                    status = st.selectbox("Initial Status", ["upcoming", "ongoing"])
+        
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        start_date = st.date_input("Start Date", value=pd.Timestamp.now().date())
+                    with col2:
+                        end_date = st.date_input("End Date", value=pd.Timestamp.now().date())
+                        
+                    col3, col4, col5 = st.columns(3)
+                    with col3:
+                        min_players = st.number_input("Min Players", min_value=0, value=4)
+                    with col4:
+                        max_players = st.number_input("Max Players", min_value=2, value=128)
+                    with col5:
+                        rounds = st.number_input("Rounds", min_value=1, value=3)
+                        
+                    gs_map = {f"{gs['name']} ({gs['edition']})": gs['id'] for gs in game_systems}
+                    selected_gs = st.selectbox("Game System", list(gs_map.keys())) if gs_map else None
+                    
+                    submitted = st.form_submit_button("Create Event")
+                    if submitted:
+                        # 🛡️ PROTECTION: Compile existing names in lower-case
+                        existing_names = [e["name"].lower().strip() for e in events_list] if events_list else []
+                        
+                        if not name or not event_type:
+                            st.error("Event Name and Event Type are required.")
+                        elif name.lower() in existing_names:
+                            # ❌ BLOCK DUPLICATE
+                            st.error(f"🚫 An event named '{name}' already exists. Please choose a unique name.")
+                        else:
+                            new_event = {
+                                "name": name,
+                                "event_type": event_type,
+                                "status": status,
+                                "start_date": start_date.isoformat(),
+                                "end_date": end_date.isoformat(),
+                                "min_players": min_players,
+                                "max_players": max_players,
+                                "rounds": rounds,
+                                "created_by": st.session_state.user.id,
+                                "game_system_id": gs_map[selected_gs] if selected_gs else None
+                            }
+                            try:
+                                supabase.table("events").insert(new_event).execute()
+                                announcement = f"🎮 **New Event Created!** 🎮\n**{name}** ({event_type}) has been added! Sign ups are now open."
+                                post_to_discord_webhook(announcement)
+                                st.success(f"🎉 Event '{name}' created successfully!")
+                                time.sleep(1)
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Error saving event: {e}")
+        
+            # =========================================================================
+            # TAB 2: MANAGE EVENT
+            # =========================================================================
+            with tab2:
+                if not active_event:
+                    st.info("Please create an event first.")
+                else:
+                    st.subheader(f"Editing: {active_event['name']}")
+                    with st.form("update_event_form"):
+                        u_name = st.text_input("Event Name", value=active_event["name"]).strip()
+                        
+                        if event_types_data:
+                            type_options = [row["event_type"] for row in event_types_data]
+                            current_type_idx = type_options.index(active_event["event_type"]) if active_event["event_type"] in type_options else 0
+                            u_type = st.selectbox("Event Type", type_options, index=current_type_idx)
+                        else:
+                            u_type = st.text_input("Event Type", value=active_event["event_type"])
+                            
+                        status_list = ["upcoming", "ongoing", "completed", "cancelled"]
+                        u_status = st.selectbox("Status", status_list, index=status_list.index(active_event["status"]) if active_event["status"] in status_list else 0)
+                        
+                        s_date = pd.to_datetime(active_event["start_date"]).date() if active_event["start_date"] else pd.Timestamp.now().date()
+                        e_date = pd.to_datetime(active_event["end_date"]).date() if active_event["end_date"] else pd.Timestamp.now().date()
+                        
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            u_start_date = st.date_input("Start Date", value=s_date)
+                        with col2:
+                            u_end_date = st.date_input("End Date", value=e_date)
+                            
+                        col3, col4, col5 = st.columns(3)
+                        with col3:
+                            u_min_players = st.number_input("Min Players", min_value=0, value=int(active_event["min_players"] or 0))
+                        with col4:
+                            u_max_players = st.number_input("Max Players", min_value=1, value=int(active_event["max_players"] or 9999))
+                        with col5:
+                            u_rounds = st.number_input("Rounds", min_value=0, value=int(active_event["rounds"] or 0))
+                            
+                        update_submitted = st.form_submit_button("Save Changes")
+                        if update_submitted:
+                            # 🛡️ PROTECTION: Verify name isn't clashing with a separate event name
+                            other_events_names = [
+                                e["name"].lower().strip() for e in events_list 
+                                if e["id"] != active_event["id"]
+                            ] if events_list else []
+                            
+                            if not u_name:
+                                st.error("Event Name cannot be empty.")
+                            elif u_name.lower() in other_events_names:
+                                st.error(f"🚫 Another event is already using the name '{u_name}'.")
+                            else:
+                                updated_data = {
+                                    "name": u_name, "event_type": u_type, "status": u_status,
+                                    "start_date": u_start_date.isoformat(), "end_date": u_end_date.isoformat(),
+                                    "min_players": u_min_players, "max_players": u_max_players, "rounds": u_rounds
+                                }
+                                try:
+                                    supabase.table("events").update(updated_data).eq("id", active_event["id"]).execute()
+                                    st.success("💾 Changes saved successfully!")
+                                    time.sleep(1)
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Error updating event: {e}")
+        
+            # (Tabs 3 and 4 remain exactly as they were written before)
+
+        
+            # =========================================================================
+            # TAB 3: MANAGE PLAYERS
+            # =========================================================================
+            with tab3:
+                if not active_event:
+                    st.info("Select or create an event context first.")
+                else:
+                    st.subheader(f"Roster for {active_event['name']}")
+                    parts = supabase.table("event_participants").select("*").eq("event_id", active_event["id"]).execute().data
+                    
+                    if parts:
+                        for p in parts:
+                            # FIX: Assigned column configurations explicitly
+                            col_name, col_status, col_del = st.columns([3, 2, 1])
+                            col_name.write(f"👤 **{p['player_name'] or 'Unknown'}** (Score: {p['current_points']})")
+                            
+                            status_options = ["Checked In", "Registered", "Dropped"]
+                            current_idx = status_options.index(p["status"]) if p["status"] in status_options else 0
+                            new_status = col_status.selectbox(
+                                "Status Setup", status_options, index=current_idx, key=f"status_widget_{p['id']}", label_visibility="collapsed"
+                            )
+                            
+                            if new_status != p["status"]:
+                                supabase.table("event_participants").update({"status": new_status}).eq("id", p["id"]).execute()
+                                st.rerun()
+                                
+                            if col_del.button("❌", key=f"del_player_{p['id']}"):
+                                supabase.table("event_participants").delete().eq("id", p["id"]).execute()
+                                st.rerun()
+                    else:
+                        st.info("No players registered for this event yet.")
+                        
+                    st.markdown("---")
+                    st.write("➕ **Register Profile to Event**")
+                    profile_map = {f"{p['full_name']} (@{p['username']})" : p for p in all_profiles if p.get('full_name')}
+                    
+                    if profile_map:
+                        with st.form("add_player_form"):
+                            target_profile_str = st.selectbox("Select Profile System User", list(profile_map.keys()))
+                            custom_name = st.text_input("Override Player Display Name (Optional)")
+                            
+                            # FIX: Changed from st.form_submit_with_button to st.form_submit_button
+                            add_submitted = st.form_submit_button("Add Player to Roster")
+                            if add_submitted and target_profile_str:
+                                chosen_p = profile_map[target_profile_str]
+                                new_part = {
+                                    "event_id": active_event["id"],
+                                    "player_id": chosen_p["id"],
+                                    "player_name": custom_name if custom_name else chosen_p["full_name"],
+                                    "status": "Checked In"
+                                }
+                                try:
+                                    supabase.table("event_participants").insert(new_part).execute()
+                                    st.success(f"Added {new_part['player_name']}!")
+                                    time.sleep(1)
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error("Unable to add player. Check if they are already registered.")
+                    else:
+                        st.warning("No global system profiles found with complete full names.")
+        
+            # =========================================================================
+            # TAB 4: MANAGE PAIRINGS
+            # =========================================================================
+            with tab4:
+                if not active_event:
+                    st.info("Select or create an event context first.")
+                else:
+                    st.subheader("Pairings & Match Slip Entry")
+                    rounds_data = supabase.table("event_rounds").select("*").eq("event_id", active_event["id"]).order("round_number").execute().data
+                    
+                    if not rounds_data:
+                        if st.button("🏁 Initialize Round 1 Setup"):
+                            try:
+                                supabase.table("event_rounds").insert({"event_id": active_event["id"], "round_number": 1, "is_active": True}).execute()
+                                st.success("Round 1 Initialised!")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Error initiating rounds: {e}")
+                    else:
+                        round_map = {f"Round {r['round_number']} {'(Active)' if r['is_active'] else ''}": r for r in rounds_data}
+                        selected_round_str = st.selectbox("Select Round Matrix:", list(round_map.keys()))
+                        active_round = round_map[selected_round_str]
+                        
+                        pairings = supabase.table("event_pairings").select("*").eq("round_id", active_round["id"]).order("table_number").execute().data
+                        
+                        if pairings:
+                            st.write("### Active Match Slips")
+                            prof_names = {p["id"]: (p["full_name"] or p["username"]) for p in all_profiles}
+                            
+                            for pair in pairings:
+                                p1_name = prof_names.get(pair["player_1_id"], "Unknown Player 1")
+                                p2_name = prof_names.get(pair["player_2_id"], "Bye / Ghost Player")
+                                
+                                with st.expander(f"🎲 Table {pair['table_number']}: {p1_name} vs {p2_name} {'✅ Logged' if pair['is_completed'] else '⏳ Pending'}"):
+                                    with st.form(f"match_slip_form_{pair['id']}"):
+                                        col_p1, col_p2 = st.columns(2)
+                                        p1_score = col_p1.number_input(f"{p1_name} Score", min_value=0, value=0, key=f"p1_s_{pair['id']}")
+                                        p2_score = col_p2.number_input(f"{p2_name} Score", min_value=0, value=0, key=f"p2_s_{pair['id']}")
+                                        
+                                        is_draw = p1_score == p2_score
+                                        w_id = pair["player_1_id"] if p1_score > p2_score else (pair["player_2_id"] if p2_score > p1_score else None)
+                                        l_id = pair["player_2_id"] if p1_score > p2_score else (pair["player_1_id"] if p2_score > p1_score else None)
+                                        
+                                        # FIX: Changed from st.form_submit_with_button to st.form_submit_button
+                                        if st.form_submit_button("Verify & Lock Match Scores"):
+                                            try:
+                                                supabase.table("event_pairings").update({"is_completed": True}).eq("id", pair["id"]).execute()
+                                                
+                                                match_payload = {
+                                                    "event_id": active_event["id"], "round_id": active_round["id"],
+                                                    "game_system_id": active_event.get("game_system_id"),
+                                                    "player_1_id": pair["player_1_id"], "p1_score_total": p1_score,
+                                                    "player_2_id": pair["player_2_id"], "p2_score_total": p2_score,
+                                                    "winner_id": w_id, "loser_id": l_id, "is_draw": is_draw, "status": "Logged"
+                                                }
+                                                supabase.table("matches").insert(match_payload).execute()
+                                                st.success("Match historical records logged accurately!")
+                                                time.sleep(1)
+                                                st.rerun()
+                                            except Exception as e:
+                                                st.error(f"Error logging match outputs: {e}")
+                        else:
+                            st.info("No pairings have been generated for this round matrix yet.")
+                            checked_in = supabase.table("event_participants").select("player_id, player_name").eq("event_id", active_event["id"]).eq("status", "Checked In").execute().data
+                            
+                            if len(checked_in) >= 2:
+                                st.write("### Manual Table Match Generator")
+                                p_map = {p["player_name"]: p["player_id"] for p in checked_in}
+                                
+                                p1_sel = st.selectbox("Player 1 Assignment", list(p_map.keys()), key="p1_quick_assign")
+                                p2_sel = st.selectbox("Player 2 Assignment", [k for k in p_map.keys() if k != p1_sel], key="p2_quick_assign")
+                                table_num = st.number_input("Table Number Assignment", min_value=1, value=1)
+                                
+                                if st.button("Generate Pairing Row"):
+                                    new_pair_payload = {
+                                        "event_id": active_event["id"], "round_id": active_round["id"],
+                                        "player_1_id": p_map[p1_sel], "player_2_id": p_map[p2_sel],
+                                        "table_number": table_num, "is_completed": False
+                                    }
+                                    try:
+                                        supabase.table("event_pairings").insert(new_pair_payload).execute()
+                                        st.success("Manual pairing registered successfully!")
+                                        time.sleep(1)
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Failed to generate custom pairing: {e}")
+                            else:
+                                st.warning("You must have a minimum of 2 users with 'Checked In' status on your roster to build pairings.")
+
+        render_event_manager_page(supabase)
+        
+  
     elif st.session_state.page == "Graphs":
         st.header("Graphs")
         st.divider()
