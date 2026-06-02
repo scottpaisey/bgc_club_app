@@ -182,58 +182,6 @@ else:
             collapse_sidebar()
             st.rerun()        
 
-        
-
-    # if st.session_state.page is None:
-    #     st.header("BGC Club App")
-    #     st.write(f"Welcome back, {st.session_state.user.user_metadata.get('full_name')}!")
-    #     # st.text(f"Here we will be hosting all of our club game data for you to use and analyse however you'd like!\n\n"
-    #     #         f"If you have any issues or want to submit a request for something new (new game system added, graph, etc.) then please contact scottpaisey in our Discord.")
-    #     st.divider()
-    #     st.write(f"Most recent matches logged")
-
-    #     # Fetch from your new view
-    #     res = supabase.table("match_results").select("*").eq("status", "Logged").order("game_date_ord", desc=True).limit(50).execute()
-        
-    #     if res.data:
-    #         recent_df = pd.DataFrame(res.data)
-            
-    #         # 2. Convert to datetime (keep dayfirst=True)
-    #         recent_df["game_date"] = pd.to_datetime(recent_df["game_date"], dayfirst=True)
-            
-    #         st.subheader("Most Recent Battle Reports")
-    #         st.dataframe(
-    #             recent_df,
-    #             column_order=(
-    #                 "game_date",
-    #                 "system_name",
-    #                 "display_p1_name",
-    #                 "p1_faction",
-    #                 "p1_score_total",
-    #                 "display_p2_name",
-    #                 "p2_faction",
-    #                 "p2_score_total"
-    #             ),
-    #             column_config={
-    #                 # 3. Use DateColumn to force the DD/MM/YYYY display format
-    #                 "game_date": st.column_config.DateColumn(
-    #                     "Date", 
-    #                     format="DD/MM/YYYY"
-    #                 ),
-    #                 "system_name": "System",
-    #                 "display_p1_name": "Player 1",
-    #                 "p1_faction": "P1 Faction",
-    #                 "p1_score_total": "P1 Score",
-    #                 "display_p2_name": "Player 2",
-    #                 "p2_faction": "P2 Faction",
-    #                 "p2_score_total": "P2 Score"
-    #             },
-    #             use_container_width=True,
-    #             hide_index=True
-    #         )
-    #     else:
-    #         st.info("No match history found yet. Go log some games!")
-    
     if st.session_state.page is None:
         st.header("BGC Club App")
         st.write(f"Welcome back, {st.session_state.user.user_metadata.get('full_name')}!")
