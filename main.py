@@ -359,10 +359,14 @@ else:
         st.header("Log Games")
         st.divider()
         st.subheader("Step 1: Please Choose the System you are logging")
+        if st.session_state.get("user_role") == "system_admin":
+            if st.button("Warhammer 40,000 (11th Edition)"):
+                st.session_state.page = "40k11th"
+                st.rerun()
         if st.button("Warhammer 40,000"):
             st.session_state.page = "40k"
-            st.rerun()
-        if st.button("Age of Sigmar"):
+            st.rerun()        
+        if st.button("Age of Sigmar (3rd Edition)"):
             st.session_state.page = "AOS"
             st.rerun()
         if st.button("Kill Team"):
@@ -376,6 +380,375 @@ else:
             if st.button("Old World"):
                 st.session_state.page = "OW"
                 st.rerun()
+
+
+    # WARHAMMER 11TH EDITION GAME LOGGING
+    # # / DIFFERENCE FROM 10TH TO 11TH IS HOW DETATCHMENTS ARE CHOSEN, BEING ABLE TO SELECT UP TO 3 DETATCHMENT POINTS AND HAVING
+    # # / NO SHARED KEYWORDS BETWEEN THEM.
+
+    elif st.session_state.page == "40k11th":
+        st.header("Warhammer 40,000 Game (11th Edition)")
+        st.divider()
+        try:
+            # System ID for your new 11th Edition 40K system row
+            SYSTEM_11TH_ID = 'ccc3b65d-a53c-4528-9b6e-d0313e71c790' 
+            
+            p1_response_system_factions = supabase.table("system_factions").select("*").execute()
+            p1_df_system_factions = pd.DataFrame(p1_response_system_factions.data)
+            p2_response_system_factions = supabase.table("system_factions").select("*").execute()
+            p2_df_system_factions = pd.DataFrame(p2_response_system_factions.data)
+            p2_response_account = supabase.table("profiles").select("*").execute()
+            p2_df_account = pd.DataFrame(p2_response_account.data)
+        except Exception as e:
+            st.error(f"Error loading system data: {e}")
+            
+        st.subheader("Game Details")
+        game_size = st.selectbox('Game Size', ['Strike Force', 'Incursion', 'Other'], index=None,
+                                 placeholder="Choose...", key="game_s")
+        
+        # -------------------------------------------------------------
+        # PLAYER 1 DETAILS
+        # -------------------------------------------------------------
+        st.write("**Your Details**")
+        p1_name = st.text_input("Your Discord Name*", value=discord_name, key="p1_username", disabled=True)
+        
+        p1_all_df = p1_df_system_factions[p1_df_system_factions['system_id'] == SYSTEM_11TH_ID]
+        p1_all = st.selectbox("Your Allegiance", p1_all_df['allegiance'].unique(), index=None,
+                              placeholder="Choose...", key="p1_all_sel")
+        
+        p1_fac_id = None
+        p1_selected_dets = []
+        
+        if p1_all:
+            p1_fac_df = p1_all_df[p1_all_df['allegiance'] == p1_all]
+            p1_fac = st.selectbox("Your Faction", p1_fac_df['faction'].unique(), index=None,
+                                  placeholder="Choose...", key="p1_fac_sel")
+            
+            if p1_fac:
+                # Grab the unique master faction_id for this 11th Ed army row
+                p1_fac_id = p1_fac_df[p1_fac_df['faction'] == p1_fac].iloc[0]['faction_id']
+                
+                # Fetch valid 11th edition detachments available for this faction
+                p1_det_resp = supabase.table("detachments_11th").select("*").eq("faction_id", p1_fac_id).execute()
+                if p1_det_resp.data:
+                    p1_det_df = pd.DataFrame(p1_det_resp.data)
+                    # Unique display name label combining the DP cost
+                    p1_det_df['display_label'] = p1_det_df['name'] + " (" + p1_det_df['dp_cost'].astype(str) + " DP)"
+                    
+                    p1_chosen_labels = st.multiselect("Your Detachments (Max 3, Max 3 DP Total)", p1_det_df['display_label'].unique(), max_selections=3, key="p1_dets")
+                    p1_selected_dets = p1_det_df[p1_det_df['display_label'].isin(p1_chosen_labels)].to_dict(orient="records")
+                else:
+                    st.info("ℹ️ No multi-detachments found for this faction yet.")
+        else:
+            p1_fac = st.selectbox("Your Faction", [], disabled=True)
+
+        # -------------------------------------------------------------
+        # PLAYER 2 DETAILS
+        # -------------------------------------------------------------
+        st.write("**Opponent Details**")
+        p2_input = st.text_input("Opponent Name*", key="p2_username",
+                                 help="Type their Discord User Name to link their profile")
+        p2_id = None
+        p2_name = None
+
+        if p2_input:
+            search_term = p2_input.strip().lower()
+            mask = (p2_df_account['username'].fillna('').str.lower() == search_term) | \
+                   (p2_df_account['full_name'].fillna('').str.lower() == search_term)
+            matched_rows = p2_df_account[mask]
+
+            if not matched_rows.empty:
+                user_row = matched_rows.iloc[0]
+                p2_id = user_row['id']
+                p2_name = user_row['full_name'] if user_row['full_name'] else user_row['username']
+                st.success(f"✅ User found! Linked to **{p2_name}**.")
+            else:
+                p2_name = p2_input
+                st.warning("⚠️ User not found. Recording as 'Guest'.")
+
+        p2_all_df = p2_df_system_factions[p2_df_system_factions['system_id'] == SYSTEM_11TH_ID]
+        p2_all = st.selectbox("Opponents Allegiance", p2_all_df['allegiance'].unique(), index=None,
+                              placeholder="Choose...", key="p2_all_sel")
+        
+        p2_fac_id = None
+        p2_selected_dets = []
+        
+        if p2_all:
+            p2_fac_df = p2_all_df[p2_all_df['allegiance'] == p2_all]
+            p2_fac = st.selectbox("Opponents Faction", p2_fac_df['faction'].unique(), index=None,
+                                  placeholder="Choose...", key="p2_fac_sel")
+            
+            if p2_fac:
+                p2_fac_id = p2_fac_df[p2_fac_df['faction'] == p2_fac].iloc[0]['faction_id']
+                
+                # Fetch valid 11th edition detachments for Opponent
+                p2_det_resp = supabase.table("detachments_11th").select("*").eq("faction_id", p2_fac_id).execute()
+                if p2_det_resp.data:
+                    p2_det_df = pd.DataFrame(p2_det_resp.data)
+                    p2_det_df['display_label'] = p2_det_df['name'] + " (" + p2_det_df['dp_cost'].astype(str) + " DP)"
+                    
+                    p2_chosen_labels = st.multiselect("Opponents Detachments (Max 3, Max 3 DP Total)", p2_det_df['display_label'].unique(), max_selections=3, key="p2_dets")
+                    p2_selected_dets = p2_det_df[p2_det_df['display_label'].isin(p2_chosen_labels)].to_dict(orient="records")
+                else:
+                    st.info("ℹ️ No multi-detachments found for this faction yet.")
+        else:
+            p2_fac = st.selectbox("Opponents Faction", [], disabled=True)
+
+        # -------------------------------------------------------------
+        # TURN ORDER & ROLES
+        # -------------------------------------------------------------
+        options = ["You", "Opponent"]
+        went_first = st.segmented_control("Who went first?", options, selection_mode="single", key="went_first")
+        attacking_player = st.segmented_control("Who is the attacker?", options, selection_mode="single", key="attacking_player")
+
+        if st.button("Proceed to Scoring"):
+            # Validation Step: 11th Edition Rule Constraints Check
+            def validate_list(detachments, player_label):
+                total_dp = sum(d['dp_cost'] for d in detachments)
+                if total_dp > 3:
+                    return f"❌ {player_label} list exceeds detachment points limit ({total_dp}/3 DP selected)."
+                
+                # Keyword overlapping check
+                seen_keywords = []
+                for d in detachments:
+                    if d.get('keywords'):
+                        duplicates = set(seen_keywords).intersection(set(d['keywords']))
+                        if duplicates:
+                            return f"❌ {player_label} list has duplicate detachment keywords: {list(duplicates)}"
+                        seen_keywords.extend(d['keywords'])
+                return None
+
+            p1_error = validate_list(p1_selected_dets, "Your")
+            p2_error = validate_list(p2_selected_dets, "Opponent's")
+
+            if not (p1_name and p2_name):
+                st.error("❌ Both player names are mandatory.")
+            elif not (p1_fac and p2_fac):
+                st.error("❌ Both players must select a Faction.")
+            elif p1_error:
+                st.error(p1_error)
+            elif p2_error:
+                st.error(p2_error)
+            else:
+                # Map actual IDs safely
+                actual_p2_id = p2_id if (p2_id and p2_id != p2_name) else None
+                attacker_id = st.session_state.user.id if attacking_player == "You" else actual_p2_id
+                defender_id = actual_p2_id if attacking_player == "You" else st.session_state.user.id
+                went_first_id = st.session_state.user.id if went_first == "You" else actual_p2_id
+
+                # Bundle values up for the scoring layout step
+                st.session_state.game_data = {
+                    "system_id": SYSTEM_11TH_ID,
+                    "p1_id": st.session_state.user.id,
+                    "p1_name": p1_name,
+                    "p1_all": p1_all,
+                    "p1_fac": p1_fac,
+                    "p2_id": actual_p2_id,
+                    "p2_name": p2_name,
+                    "p2_all": p2_all,
+                    "p2_fac": p2_fac,
+                    "p1_fac_id": str(p1_fac_id),
+                    "p2_fac_id": str(p2_fac_id),
+                    "attacker_id": attacker_id,
+                    "defender_id": defender_id,
+                    "went_first_id": went_first_id,
+                    "game_size": game_size,
+                    # Carry the full dictionary records forward to insert into match_detachments_11th later
+                    "p1_detachments": p1_selected_dets, 
+                    "p2_detachments": p2_selected_dets
+                }
+
+                st.session_state.page = "40k11th_scores"
+                st.rerun()
+
+    elif st.session_state.page == "40k11th_scores":
+        st.subheader("Game Scores")
+        st.divider()
+        setup = st.session_state.game_data
+        
+        system_id = setup.get("system_id", None)
+        game_size = setup.get("game_size", None)
+
+        attacker_id = setup.get("attacker_id", None)
+        defender_id = setup.get("defender_id", None)
+        went_first_id = setup.get("went_first_id", None)
+
+        p1_id = setup.get("p1_id", None)
+        p1_name = setup.get("p1_name", None)
+        p1_fac_id = setup.get("p1_fac_id", None)
+        p1_all = setup.get("p1_all", None)
+        p1_fac = setup.get("p1_fac", None)
+        p1_detachments = setup.get("p1_detachments", [])  # List of chosen detachment records
+
+        p2_id = setup.get("p2_id", None)
+        p2_name = setup.get("p2_name", None)
+        p2_fac_id = setup.get("p2_fac_id", None)
+        p2_all = setup.get("p2_all", None)
+        p2_fac = setup.get("p2_fac", None)
+        p2_detachments = setup.get("p2_detachments", [])  # List of chosen detachment records
+
+        if not st.session_state.confirm_submit:
+            with st.form("score_submission_form"):
+                col3, col4 = st.columns(2)
+                with col3:
+                    st.subheader(f"{p1_name}")
+                    st.write(f"**Faction:** {p1_fac}")
+                    p1_det_string = ", ".join([d['name'] for d in p1_detachments]) if p1_detachments else "None Chosen"
+                    st.caption(f"**Formations:** {p1_det_string}")
+                    
+                    p1_pri = st.number_input("Primary Score*", 0, 45, key="p1_p")
+                    p1_sec = st.number_input("Secondary Score*", 0, 45, key="p1_s")
+                    p1_br = 10 if st.toggle("Battle Ready?*", key="p1_br") else 0
+                    p1_killed_warlord = True if st.toggle("Slain Enemy Warlord?*", key="p1_killed_warlord") else False
+                    p1_tabled_opponent = True if st.toggle("Tabled Opponent?*", key="p1_tabled_opponent") else False
+                    
+                with col4:
+                    st.subheader(f"{p2_name}")
+                    st.write(f"**Faction:** {p2_fac}")
+                    p2_det_string = ", ".join([d['name'] for d in p2_detachments]) if p2_detachments else "None Chosen"
+                    st.caption(f"**Formations:** {p2_det_string}")
+                    
+                    p2_pri = st.number_input("Primary Score*", 0, 45, key="p2_p")
+                    p2_sec = st.number_input("Secondary Score*", 0, 45, key="p2_s")
+                    p2_br = 10 if st.toggle("Battle Ready?*", key="p2_br") else 0
+                    p2_killed_warlord = True if st.toggle("Slain Enemy Warlord?*", key="p2_killed_warlord") else False
+                    p2_tabled_opponent = True if st.toggle("Tabled Opponent?*", key="p2_tabled_opponent") else False
+                    
+                submit_scores = st.form_submit_button("Review Results")
+
+                if submit_scores:
+                    st.session_state.temp_scores = {
+                        "p1_pri": p1_pri, "p1_sec": p1_sec, "p1_br": p1_br, "p1_killed_warlord": p1_killed_warlord, "p1_tabled_opponent": p1_tabled_opponent,
+                        "p2_pri": p2_pri, "p2_sec": p2_sec, "p2_br": p2_br, "p2_killed_warlord": p2_killed_warlord, "p2_tabled_opponent": p2_tabled_opponent
+                    }
+                    st.session_state.confirm_submit = True
+                    st.rerun()
+
+        else:
+            st.warning("⚠️ **Confirm Game Results**")
+            st.write("Please review the details below. **These cannot currently be changed after posting.**")
+            scores = st.session_state.temp_scores
+            
+            p1_total = scores['p1_pri'] + scores['p1_sec'] + scores['p1_br']
+            p2_total = scores['p2_pri'] + scores['p2_sec'] + scores['p2_br']
+
+            if p1_total > p2_total:
+                winner_id, loser_id = setup['p1_id'], setup['p2_id']
+                is_draw = False
+            elif p2_total > p1_total:
+                winner_id, loser_id = setup['p2_id'], setup['p1_id']
+                is_draw = False
+            else:
+                winner_id, loser_id = None, None
+                is_draw = True
+
+            col_a, col_b = st.columns(2)
+            p1_det_string = ", ".join([d['name'] for d in p1_detachments]) if p1_detachments else "None"
+            col_a.write(f"Name: **{setup['p1_name']}**"
+                        f"\n\nFaction: {setup['p1_fac']}"
+                        f"\n\nDetachments: {p1_det_string}"
+                        f"\n\nPrimary: {scores['p1_pri']}"
+                        f"\n\nSecondary: {scores['p1_sec']}"
+                        f"\n\nBattle Ready: {scores['p1_br']}")
+                        
+            p2_det_string = ", ".join([d['name'] for d in p2_detachments]) if p2_detachments else "None"
+            col_b.write(f"Name: **{setup['p2_name']}**"
+                        f"\n\nFaction: {setup['p2_fac']}"
+                        f"\n\nDetachments: {p2_det_string}"
+                        f"\n\nPrimary: {scores['p2_pri']}"
+                        f"\n\nSecondary: {scores['p2_sec']}"
+                        f"\n\nBattle Ready: {scores['p2_br']}")
+
+            c1, c2 = st.columns(2)
+
+            def clean_id(val):
+                if isinstance(val, str) and len(val) < 30:
+                    return None
+                return val
+
+            if c1.button("✅ Yes, Post Results", type="primary", use_container_width=True):
+                try:
+                    match_details = {
+                        "game_system_id": setup['system_id'],
+                        "event_id": setup.get('event_id', None),  # Dynamically assigns ladder/league ID if present
+                        "round_id": setup.get('round_id', None),
+                        "mission_id": None,
+                        "game_size": setup['game_size'],
+                        "player_1_id": setup['p1_id'],
+                        "p1_faction_id": setup['p1_fac_id'],
+                        "p1_score_01": scores['p1_pri'],
+                        "p1_score_02": scores['p1_sec'],
+                        "p1_score_03": scores['p1_br'],
+                        "p1_score_total": p1_total,
+                        "p1_score_mar": p1_total - p2_total,
+                        "player_2_id": clean_id(setup['p2_id']),
+                        "player_2_name": setup['p2_name'],
+                        "p2_faction_id": setup['p2_fac_id'],
+                        "p2_score_01": scores['p2_pri'],
+                        "p2_score_02": scores['p2_sec'],
+                        "p2_score_03": scores['p2_br'],
+                        "p2_score_total": p2_total,
+                        "p2_score_mar": p2_total - p1_total,
+                        "went_first_id": clean_id(setup['went_first_id']),
+                        "winner_id": clean_id(winner_id),
+                        "loser_id": clean_id(loser_id),
+                        "attacker_id": clean_id(setup['attacker_id']),
+                        "defender_id": clean_id(setup['defender_id']),
+                        "is_draw": is_draw,
+                        "recorded_by": setup['p1_id'],
+                        "club_id": "ac85d0d1-24df-4b85-a4bd-0e5e944acd99",
+                        "p1_killed_warlord": scores['p1_killed_warlord'],
+                        "p2_killed_warlord": scores['p2_killed_warlord'],
+                        "p1_tabled_opponent": scores['p1_tabled_opponent'],
+                        "p2_tabled_opponent": scores['p2_tabled_opponent'],
+                    }
+
+                    # 1. Post to primary match log table
+                    match_insert_res = supabase.table("matches").insert(match_details).execute()
+                    
+                    if match_insert_res.data:
+                        # Extract the freshly generated uuid match id
+                        new_match_id = match_insert_res.data[0]['id']
+                        
+                        # 2. Iterate and write Player 1's Multi-Detachments
+                        p1_det_payloads = [
+                            {"match_id": new_match_id, "player_id": setup['p1_id'], "detachment_id": det['id']}
+                            for det in p1_detachments
+                        ]
+                        if p1_det_payloads:
+                            supabase.table("match_detachments_11th").insert(p1_det_payloads).execute()
+                            
+                        # 3. Iterate and write Player 2's Multi-Detachments
+                        if clean_id(setup['p2_id']):
+                            p2_det_payloads = [
+                                {"match_id": new_match_id, "player_id": setup['p2_id'], "detachment_id": det['id']}
+                                for det in p2_detachments
+                            ]
+                            if p2_det_payloads:
+                                supabase.table("match_detachments_11th").insert(p2_det_payloads).execute()
+                        
+                        # Trigger Discord Notification Feed
+                        post_to_discord_webhook(f"⚔️ **Match Logged!** {setup['p1_name']} vs {setup['p2_name']}. Result: {p1_total} - {p2_total}")
+                        
+                        st.success("Game posted to Supabase!")
+
+                        # 4. State Reset Routine
+                        st.session_state.game_data = {}
+                        st.session_state.temp_scores = {}
+                        st.session_state.confirm_submit = False
+                        st.session_state.selected_system = "40K"
+                        st.session_state.page = None
+                        st.rerun()
+                        
+                except Exception as db_err:
+                    st.error(f"Failed to record match. Database error: {db_err}")
+                    
+            if c2.button("❌ Cancel / Make Changes", use_container_width=True):
+                st.session_state.confirm_submit = False
+                st.rerun()
+
+
+    # WARHAMMER 10TH EDITION GAME LOGGING
 
     elif st.session_state.page == "40k":
         st.header("Warhammer 40,000 Game")
@@ -398,7 +771,7 @@ else:
         # Extract the name from Discord metadata
         p1_name = st.text_input("Your Discord Name*", value=discord_name, key="p1_username", disabled=True)
         # 1. Allegiance Dropdown
-        p1_all_df = p1_df_system_factions[p1_df_system_factions['short_name'] == '40K']
+        p1_all_df = p1_df_system_factions[p1_df_system_factions['system_id'] == 'b24b1f7a-152f-49f5-b273-29ba5c00bfb8']
         p1_all = st.selectbox("Your Allegiance", p1_all_df['allegiance'].unique(), index=None,
                               placeholder="Choose...", key="p1_all_sel")
         # 2. Faction Dropdown (MUST use filtered options)
@@ -701,7 +1074,7 @@ else:
                         "is_draw": is_draw,
                         # "played_at": ,
                         "recorded_by":  setup['p1_id'],
-                        # "club_id": ,
+                        "club_id": "ac85d0d1-24df-4b85-a4bd-0e5e944acd99",
                         "p1_killed_warlord": scores['p1_killed_warlord'],
                         "p2_killed_warlord": scores['p2_killed_warlord'],
                         "p1_tabled_opponent": scores['p1_tabled_opponent'],
@@ -1047,7 +1420,7 @@ else:
                         "is_draw": is_draw,
                         # "played_at": ,
                         "recorded_by":  setup['p1_id'],
-                        # "club_id": ,
+                        "club_id": "ac85d0d1-24df-4b85-a4bd-0e5e944acd99",
                         "p1_killed_warlord": scores['p1_killed_warlord'],
                         "p2_killed_warlord": scores['p2_killed_warlord'],
                         "p1_tabled_opponent": scores['p1_tabled_opponent'],
@@ -1478,7 +1851,7 @@ else:
                         "is_draw": is_draw,
                         # "played_at": ,
                         "recorded_by":  setup['p1_id'],
-                        # "club_id": ,
+                        "club_id": "ac85d0d1-24df-4b85-a4bd-0e5e944acd99",
                         "p1_killed_warlord": scores['p1_killed_warlord'],
                         "p2_killed_warlord": scores['p2_killed_warlord'],
                         "p1_tabled_opponent": scores['p1_tabled_opponent'],
@@ -1812,7 +2185,7 @@ else:
                         "is_draw": is_draw,
                         # "played_at": ,
                         "recorded_by":  setup['p1_id'],
-                        # "club_id": ,
+                        "club_id": "ac85d0d1-24df-4b85-a4bd-0e5e944acd99",
                         "p1_killed_warlord": scores['p1_killed_warlord'],
                         "p2_killed_warlord": scores['p2_killed_warlord'],
                         "p1_tabled_opponent": scores['p1_tabled_opponent'],
