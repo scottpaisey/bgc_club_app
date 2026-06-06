@@ -425,11 +425,13 @@ else:
                                   placeholder="Choose...", key="p1_fac_sel")
             
             if p1_fac:
-                # Grab the unique master faction_id for this 11th Ed army row
-                p1_fac_id = p1_fac_df[p1_fac_df['faction'] == p1_fac].iloc[0]['faction_id']
+                # FIX: Safely extract the raw string value from the row
+                matched_rows = p1_fac_df[p1_fac_df['faction'] == p1_fac]
+                p1_fac_id = str(matched_rows['faction_id'].values[0])
                 
                 # Fetch valid 11th edition detachments available for this faction
                 p1_det_resp = supabase.table("detachments_11th").select("*").eq("faction_id", p1_fac_id).execute()
+
                 if p1_det_resp.data:
                     p1_det_df = pd.DataFrame(p1_det_resp.data)
                     # Unique display name label combining the DP cost
