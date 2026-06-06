@@ -3052,7 +3052,8 @@ else:
                                                         try:
                                                             supabase.table("event_pairings").insert(new_pair_payload).execute()
                                                             st.success("Manual pairing registered successfully!")
-                                                            time.sleep(1)st.rerun()
+                                                            time.sleep(1)
+                                                            st.rerun()
                                                         except Exception as e:
                                                             st.error(f"Failed to generate custom pairing: {e}")
                                                         else:
