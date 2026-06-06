@@ -2741,7 +2741,7 @@ else:
                     
                     # Fetch participants, sorted by rank for ladders, or by name for swiss
                     if is_ladder:
-                        parts = supabase.table("event_participants").select("*").eq("event_id", active_event["id"]).order("current_rank", nulls_last=True).execute().data
+                        parts = supabase.table("event_participants").select("*").eq("event_id", active_event["id"]).order("current_rank", nullsfirst=False).execute().data
                     else:
                         parts = supabase.table("event_participants").select("*").eq("event_id", active_event["id"]).order("player_name").execute().data
                     
