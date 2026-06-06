@@ -2233,7 +2233,207 @@ else:
 
     elif st.session_state.page == "BGC_Ladder":
         st.header("BGC Ladder")
-        st.divider()    
+        st.caption("King of the Hill — Casual 3-Month Matched Play Campaign")
+        st.divider()
+
+        # System ID for 11th Edition 40K system row
+        SYSTEM_11TH_ID = 'ccc3b65d-a53c-4528-9b6e-d0313e71c790'
+
+        # -------------------------------------------------------------
+        # 1. FETCH ACTIVE LADDER EVENT CONTEXT
+        # -------------------------------------------------------------
+        try:
+            # Dynamically grab the active Ladder event ID
+            active_ladder_resp = supabase.table("events").select("id, name").eq("event_type", "Ladder").eq("status", "ongoing").maybe_single().execute()
+            
+            if not active_ladder_resp.data:
+                st.info("ℹ️ There is no active, ongoing Ladder event running at this moment.")
+                st.stop()
+                
+            ladder_event = active_ladder_resp.data
+            event_id = ladder_event["id"]
+            st.subheader(f"Active Campaign: {ladder_event['name']}")
+            
+            # Fetch participants for this event
+            parts_resp = supabase.table("event_participants").select("*").eq("event_id", event_id).execute()
+            parts_df = pd.DataFrame(parts_resp.data) if parts_resp.data else pd.DataFrame()
+            
+            # Fetch profiles mapping dictionary for names
+            profiles_resp = supabase.table("profiles").select("id, username, full_name").execute()
+            prof_dict = {p["id"]: (p["full_name"] or p["username"]) for p in profiles_resp.data} if profiles_resp.data else {}
+            
+        except Exception as e:
+            st.error(f"Error initializing campaign connection: {e}")
+            st.stop()
+
+        # -------------------------------------------------------------
+        # 2. HORIZONTAL PAGE NAVIGATION TABS
+        # -------------------------------------------------------------
+        view_tab, log_tab, history_tab = st.tabs([
+            "📊 Current Standings", 
+            "⚔️ Issue / Log Challenge", 
+            "📜 Battle Records"
+        ])
+
+        # =========================================================================
+        # TAB 1: CURRENT STANDINGS (RANKED & ENTRY POOL)
+        # =========================================================================
+        with view_tab:
+            if parts_df.empty:
+                st.info("No players are currently registered for this campaign roster.")
+            else:
+                col_ranked, col_unranked = st.columns([3, 2])
+                
+                with col_ranked:
+                    st.markdown("### 🏆 The Established Ladder")
+                    ranked_df = parts_df[parts_df["current_rank"].notna()].sort_values("current_rank")
+                    
+                    if ranked_df.empty:
+                        st.caption("No matches have been played yet. Everyone is currently in the entry pool!")
+                    else:
+                        st.dataframe(
+                            ranked_df,
+                            column_order=("current_rank", "player_name", "current_win_streak", "days_at_rank", "tie_breaker_score"),
+                            column_config={
+                                "current_rank": st.column_config.NumberColumn("Rank", format="%d"),
+                                "player_name": "Commander",
+                                "current_win_streak": "Win Streak 🔥",
+                                "days_at_rank": "Days held ⏱️",
+                                "tie_breaker_score": st.column_config.NumberColumn("Total VP", format="%d")
+                            },
+                            use_container_width=True,
+                            hide_index=True
+                        )
+
+                with col_unranked:
+                    st.markdown("### 🎲 The Entry Pool (Unranked)")
+                    st.caption("Play your first match against anyone here or the bottom 5 of the ladder to enter!")
+                    unranked_df = parts_df[parts_df["current_rank"].isna()]
+                    
+                    if unranked_df.empty:
+                        st.success("✅ Everyone has fought their way onto the ranked roster!")
+                    else:
+                        st.dataframe(
+                            unranked_df,
+                            column_order=["player_name"],
+                            column_config={"player_name": "Aspirant"},
+                            use_container_width=True,
+                            hide_index=True
+                        )
+
+        # =========================================================================
+        # TAB 2: ISSUE / LOG CHALLENGE (WITH BRACKET & COOLDOWN VALIDATION)
+        # =========================================================================
+        with log_tab:
+            st.markdown("### 📝 Record an After-Action Challenge Report")
+            
+            # Identify logged-in user variable context
+            user_uid = st.session_state.user.id
+            user_name = st.session_state.user.user_metadata.get('full_name') or st.session_state.user.user_metadata.get('username')
+            
+            # Verify user is registered to this ladder event
+            is_registered = not parts_df.empty and user_uid in parts_df["player_id"].values
+            
+            if not is_registered:
+                st.warning("⚠️ You are not registered as a participant in this ladder event. Please ask an Admin to add you.")
+            else:
+                user_row = parts_df[parts_df["player_id"] == user_uid].iloc[0]
+                user_rank = user_row["current_rank"]
+                
+                # Calculate Valid Opponent pool based on rules
+                if pd.isna(user_rank) or user_rank is None:
+                    # Rule: Unranked can challenge unranked, plus bottom 5 ranked players
+                    unranked_pool = parts_df[parts_df["current_rank"].isna() & (parts_df["player_id"] != user_uid)]
+                    ranked_pool = parts_df[parts_df["current_rank"].notna()].sort_values("current_rank", ascending=False).head(5)
+                    valid_opponents_df = pd.concat([unranked_pool, ranked_pool])
+                else:
+                    # Rule: Ranked players can challenge up to 5 places directly above them
+                    valid_opponents_df = parts_df[
+                        (parts_df["current_rank"] >= (user_rank - 5)) & 
+                        (parts_df["current_rank"] < user_rank)
+                    ]
+
+                if valid_opponents_df.empty:
+                    st.info("🥇 You are currently **Warmaster of the Sector (Rank 1)**! You must wait for others to challenge your position.")
+                else:
+                    # Form dictionary map for selectbox label display
+                    opp_map = {f"{row['player_name']} " + (f"(Rank {int(row['current_rank'])})" if pd.notna(row['current_rank']) else "(Unranked)"): row for _, row in valid_opponents_df.iterrows()}
+                    
+                    with st.form("log_ladder_game_form"):
+                        st.write(f"**Challenger (Attacker):** {user_name}")
+                        selected_opp_label = st.selectbox("Choose Defender (Opponent):", list(opp_map.keys()))
+                        
+                        st.divider()
+                        col_s1, col_s2 = st.columns(2)
+                        p1_score = col_s1.number_input("Your Total Score (Inc. Battle Ready)", 0, 100, step=1, key="lad_p1")
+                        p2_score = col_s2.number_input("Opponent Total Score (Inc. Battle Ready)", 0, 100, step=1, key="lad_p2")
+                        
+                        options_wf = ["You", "Opponent"]
+                        went_first_label = st.segmented_control("Who took the First Turn?", options_wf, selection_mode="single", default="You")
+                        
+                        submit_match = st.form_submit_button("Post Challenge Results")
+                        
+                        if submit_match:
+                            defender_row = opp_map[selected_opp_label]
+                            defender_uid = defender_row["player_id"]
+                            
+                            is_draw = p1_score == p2_score
+                            winner_id = user_uid if p1_score > p2_score else (defender_uid if p2_score > p1_score else None)
+                            loser_id = defender_uid if p1_score > p2_score else (user_uid if p2_score > p1_score else None)
+                            went_first_id = user_uid if went_first_label == "You" else defender_uid
+                            
+                            match_payload = {
+                                "game_system_id": SYSTEM_11TH_ID,
+                                "event_id": event_id,
+                                "attacker_id": user_uid,        # Challenger
+                                "defender_id": defender_uid,    # Defender
+                                "player_1_id": user_uid,
+                                "p1_score_total": p1_score,
+                                "player_2_id": defender_uid,
+                                "player_2_name": defender_row["player_name"],
+                                "p2_score_total": p2_score,
+                                "winner_id": winner_id,
+                                "loser_id": loser_id,
+                                "went_first_id": went_first_id,
+                                "is_draw": is_draw,
+                                "recorded_by": user_uid,
+                                "status": "Logged"
+                            }
+                            
+                            try:
+                                # Writing into matches triggers your custom PostgreSQL displacement re-ranking automatically
+                                supabase.table("matches").insert(match_payload).execute()
+                                # Broadcast results announcement to community feed
+    post_to_discord_webhook(f"⚔️ Ladder Challenge Settled!\n**{user_name}** challenged {defender_row['player_name']}! Final Score: {p1_score} - {p2_score}.")
+    st.success("🎉 Battle recorded successfully! The Sector Ladder positions have shifted.")
+    time.sleep(1.5)
+    st.rerun()
+    except Exception as db_err:
+        # Safe-catches the string 'COOLDOWN_VIOLATION' if they broke the back-to-back constraint rule
+        if "COOLDOWN_VIOLATION" in str(db_err):
+            st.error("🚫 Tactical Cooldown Active: You cannot challenge the exact same opponent back-to-back! Please fight someone else first.")
+        else:
+            st.error(f"Failed to submit match result. Database log error: {db_err}")
+        # =========================================================================
+        # TAB 3: BATTLE RECORDS (GAME LOG HISTORY)
+        # =========================================================================
+        with history_tab:
+            st.markdown("### 📜 Event Historical Game Logs")
+            try:
+                history_resp = supabase.table("matches").select("*").eq("event_id", event_id).eq("status", "Logged").order("played_at", desc=True).execute()
+                if not history_resp.data:
+                    st.info("No battles have been fought in this sector campaign theater yet.")
+                else:
+                    history_df = pd.DataFrame(history_resp.data)
+                    # Map IDs to friendly names inside human scannable table columns
+                    history_df["Challenger"] = history_df["attacker_id"].map(prof_dict).fillna(history_df["player_1_id"])
+                    history_df["Defender"] = history_df["defender_id"].map(prof_dict).fillna(history_df["player_2_name"])
+                    history_df["Victor"] = history_df["winner_id"].map(prof_dict).fillna("Tie / Draw")
+                    history_df["Date"] = pd.to_datetime(history_df["played_at"]).dt.strftime('%d/%m/%Y')
+                    history_df["Scoreline"] = history_df["p1_score_total"].astype(str) + " - " + history_df["p2_score_total"].astype(str)
+                    st.dataframe(history_df,column_order=["Date", "Challenger", "Scoreline", "Defender", "Victor"],column_config={"Date": "Date Settled","Challenger": "Challenger ⚔️","Scoreline": "Resulting Score","Defender": "🛡️ Defender","Victor": "🏆 Victorious Commander"},use_container_width=True,hide_index=True)
+            except Exception as hist_err:
+                st.error(f"Error building historic operational log charts: {hist_err}")
 
     elif st.session_state.page == "Event_Results":
         st.header("Event Results")
