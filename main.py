@@ -137,23 +137,7 @@ else:
     # --- EVERYTHING BELOW RUNS ONLY WHEN LOGGED IN ---
     st.sidebar.success(f"Logged in as {st.session_state.user.user_metadata.get('full_name')}")
     # st.sidebar.code(f"DEBUG: Current Page = {st.session_state.page}")
-    st.sidebar.header("BGC Club App")
-    if st.sidebar.button("Home"):
-        st.session_state.page = None
-        collapse_sidebar()
-        st.rerun()
-    if st.sidebar.button("Log Games"):
-        st.session_state.page = "Log Games"
-        collapse_sidebar()
-        st.rerun()
-    if st.sidebar.button("Event Results"):
-        st.session_state.page = "Event_Results"
-        collapse_sidebar()
-        st.rerun()
-    if st.sidebar.button("Graphs"):
-        st.session_state.page = "Graphs"
-        collapse_sidebar()
-        st.rerun()
+    st.sidebar.header("Account")
     if st.sidebar.button("Personal Stats"):
         st.session_state.page = "Personal Stats"
         collapse_sidebar()
@@ -163,6 +147,32 @@ else:
         # Clear session state completely to be safe
         for key in list(st.session_state.keys()):
             del st.session_state[key]
+        st.rerun()
+    st.sidebar.header("BGC App")
+    if st.sidebar.button("Home"):
+        st.session_state.page = None
+        collapse_sidebar()
+        st.rerun()
+    if st.sidebar.button("Log Games"):
+        st.session_state.page = "Log Games"
+        collapse_sidebar()
+        st.rerun()
+    if st.session_state.get("user_role") == "system_admin":
+        if st.sidebar.button("BGC League"):
+            st.session_state.page = "BGC_League"
+            collapse_sidebar()
+            st.rerun()
+        if st.sidebar.button("BGC Ladder"):
+            st.session_state.page = "BGC_Ladder"
+            collapse_sidebar()
+            st.rerun()
+    if st.sidebar.button("Event Results"):
+        st.session_state.page = "Event_Results"
+        collapse_sidebar()
+        st.rerun()
+    if st.sidebar.button("Club Stats"): # was Graphs
+        st.session_state.page = "Club Stats"
+        collapse_sidebar()
         st.rerun()
     if st.session_state.get("user_role") != "member":
         st.sidebar.header("Admin Pages")
@@ -2217,6 +2227,13 @@ else:
                 st.session_state.confirm_submit = False
                 st.rerun()
 
+    elif st.session_state.page == "BGC_League":
+        st.header("BGC League")
+        st.divider()
+
+    elif st.session_state.page == "BGC_Ladder":
+        st.header("BGC Ladder")
+        st.divider()    
 
     elif st.session_state.page == "Event_Results":
         st.header("Event Results")
@@ -2576,7 +2593,9 @@ else:
                     with col4:
                         max_players = st.number_input("Max Players", min_value=2, value=128)
                     with col5:
-                        rounds = st.number_input("Rounds", min_value=1, value=3)
+                        # Ladders default to 1 open round, Swiss defaults to 3 rounds
+                        default_rounds = 1 if str(event_type).lower() == "ladder" else 3
+                        rounds = st.number_input("Rounds", min_value=1, value=default_rounds)
                         
                     gs_map = {f"{gs['name']} ({gs['edition']})": gs['id'] for gs in game_systems}
                     selected_gs = st.selectbox("Game System", list(gs_map.keys())) if gs_map else None
@@ -2605,7 +2624,22 @@ else:
                                 "game_system_id": gs_map[selected_gs] if selected_gs else None
                             }
                             try:
-                                supabase.table("events").insert(new_event).execute()
+                                # 1. Insert Event Meta Entry
+                                event_res = supabase.table("events").insert(new_event).execute()
+                                
+                                if event_res.data:
+                                    created_event_id = event_res.data[0]['id']
+                                    
+                                    # 2. Automated Initialization for Ladder Events
+                                    if str(event_type).lower() == "ladder":
+                                        ladder_round_payload = {
+                                            "event_id": created_event_id,
+                                            "round_number": 1,
+                                            "is_active": True,
+                                            "deployment_type": "Open Challenge Map"
+                                        }
+                                        supabase.table("event_rounds").insert(ladder_round_payload).execute()
+                                
                                 announcement = f"🎮 **New Event Created!** 🎮\n**{name}** ({event_type}) has been added! Sign ups are now open."
                                 post_to_discord_webhook(announcement)
                                 st.success(f"🎉 Event '{name}' created successfully!")
@@ -2650,7 +2684,11 @@ else:
                         with col4:
                             u_max_players = st.number_input("Max Players", min_value=1, value=int(active_event["max_players"] or 9999))
                         with col5:
-                            u_rounds = st.number_input("Rounds", min_value=0, value=int(active_event["rounds"] or 0))
+                            # 🎯 LADDER RULE FORCE: Ladders always operate out of 1 single continuous round
+                            if str(u_type).lower() == "ladder":
+                                u_rounds = st.number_input("Rounds", min_value=1, value=1, disabled=True, help="Ladders use a single persistent round for open tracking.")
+                            else:
+                                u_rounds = st.number_input("Rounds", min_value=0, value=int(active_event["rounds"] or 0))
                             
                         update_submitted = st.form_submit_button("Save Changes")
                         if update_submitted:
@@ -2672,15 +2710,25 @@ else:
                                 }
                                 try:
                                     supabase.table("events").update(updated_data).eq("id", active_event["id"]).execute()
+                                    
+                                    # Safe-catch deployment validation for event migrations
+                                    if str(u_type).lower() == "ladder":
+                                        # Check if a round entry already exists to avoid duplicate primary key crashes
+                                        round_check = supabase.table("event_rounds").select("id").eq("event_id", active_event["id"]).eq("round_number", 1).execute()
+                                        if not round_check.data:
+                                            supabase.table("event_rounds").insert({
+                                                "event_id": active_event["id"],
+                                                "round_number": 1,
+                                                "is_active": True,
+                                                "deployment_type": "Open Challenge Map"
+                                            }).execute()
+                                            
                                     st.success("💾 Changes saved successfully!")
                                     time.sleep(1)
                                     st.rerun()
                                 except Exception as e:
                                     st.error(f"Error updating event: {e}")
-        
-            # (Tabs 3 and 4 remain exactly as they were written before)
 
-        
             # =========================================================================
             # TAB 3: MANAGE PLAYERS
             # =========================================================================
@@ -2688,14 +2736,30 @@ else:
                 if not active_event:
                     st.info("Select or create an event context first.")
                 else:
+                    is_ladder = str(active_event.get("event_type", "")).lower() == "ladder"
                     st.subheader(f"Roster for {active_event['name']}")
-                    parts = supabase.table("event_participants").select("*").eq("event_id", active_event["id"]).execute().data
+                    
+                    # Fetch participants, sorted by rank for ladders, or by name for swiss
+                    if is_ladder:
+                        parts = supabase.table("event_participants").select("*").eq("event_id", active_event["id"]).order("current_rank", nulls_last=True).execute().data
+                    else:
+                        parts = supabase.table("event_participants").select("*").eq("event_id", active_event["id"]).order("player_name").execute().data
                     
                     if parts:
+                        # 🎯 LADDER VISUAL ANCHORS: Split out players into categories
+                        if is_ladder:
+                            st.caption("🏆 **Active Sector Ladder**")
+                        
                         for p in parts:
-                            # FIX: Assigned column configurations explicitly
                             col_name, col_status, col_del = st.columns([3, 2, 1])
-                            col_name.write(f"👤 **{p['player_name'] or 'Unknown'}** (Score: {p['current_points']})")
+                            
+                            # Customise name display based on the active event mechanics
+                            if is_ladder:
+                                rank_val = f"Rank {p['current_rank']}" if p.get('current_rank') else "Entry Pool (Unranked)"
+                                streak_val = f"🔥 {p.get('current_win_streak', 0)}" if p.get('current_win_streak', 0) > 0 else ""
+                                col_name.write(f"👤 **{p['player_name'] or 'Unknown'}**  \n`{rank_val}` {streak_val}")
+                            else:
+                                col_name.write(f"👤 **{p['player_name'] or 'Unknown'}** (Score: {p['current_points']})")
                             
                             status_options = ["Checked In", "Registered", "Dropped"]
                             current_idx = status_options.index(p["status"]) if p["status"] in status_options else 0
@@ -2722,32 +2786,201 @@ else:
                             target_profile_str = st.selectbox("Select Profile System User", list(profile_map.keys()))
                             custom_name = st.text_input("Override Player Display Name (Optional)")
                             
-                            # FIX: Changed from st.form_submit_with_button to st.form_submit_button
                             add_submitted = st.form_submit_button("Add Player to Roster")
                             if add_submitted and target_profile_str:
                                 chosen_p = profile_map[target_profile_str]
+                                
+                                # Build entry payload explicitly matching your rules
                                 new_part = {
                                     "event_id": active_event["id"],
                                     "player_id": chosen_p["id"],
                                     "player_name": custom_name if custom_name else chosen_p["full_name"],
-                                    "status": "Checked In"
+                                    "status": "Checked In",
+                                    "current_rank": None,        # Explicitly forces open entry starting pool status
+                                    "current_win_streak": 0,
+                                    "days_at_rank": 1
                                 }
                                 try:
                                     supabase.table("event_participants").insert(new_part).execute()
-                                    st.success(f"Added {new_part['player_name']}!")
+                                    st.success(f"Added {new_part['player_name']} to the Entry Pool!")
                                     time.sleep(1)
                                     st.rerun()
                                 except Exception as e:
                                     st.error("Unable to add player. Check if they are already registered.")
                     else:
                         st.warning("No global system profiles found with complete full names.")
+
         
-            # =========================================================================
-            # TAB 4: MANAGE PAIRINGS
-            # =========================================================================
-            with tab4:
-                if not active_event:
-                    st.info("Select or create an event context first.")
+        #     # =========================================================================
+        #     # TAB 4: MANAGE PAIRINGS
+        #     # =========================================================================
+        #     with tab4:
+        #         if not active_event:
+        #             st.info("Select or create an event context first.")
+        #         else:
+        #             st.subheader("Pairings & Match Slip Entry")
+        #             rounds_data = supabase.table("event_rounds").select("*").eq("event_id", active_event["id"]).order("round_number").execute().data
+                    
+        #             if not rounds_data:
+        #                 if st.button("🏁 Initialize Round 1 Setup"):
+        #                     try:
+        #                         supabase.table("event_rounds").insert({"event_id": active_event["id"], "round_number": 1, "is_active": True}).execute()
+        #                         st.success("Round 1 Initialised!")
+        #                         st.rerun()
+        #                     except Exception as e:
+        #                         st.error(f"Error initiating rounds: {e}")
+        #             else:
+        #                 round_map = {f"Round {r['round_number']} {'(Active)' if r['is_active'] else ''}": r for r in rounds_data}
+        #                 selected_round_str = st.selectbox("Select Round Matrix:", list(round_map.keys()))
+        #                 active_round = round_map[selected_round_str]
+                        
+        #                 pairings = supabase.table("event_pairings").select("*").eq("round_id", active_round["id"]).order("table_number").execute().data
+                        
+        #                 if pairings:
+        #                     st.write("### Active Match Slips")
+        #                     prof_names = {p["id"]: (p["full_name"] or p["username"]) for p in all_profiles}
+                            
+        #                     for pair in pairings:
+        #                         p1_name = prof_names.get(pair["player_1_id"], "Unknown Player 1")
+        #                         p2_name = prof_names.get(pair["player_2_id"], "Bye / Ghost Player")
+                                
+        #                         with st.expander(f"🎲 Table {pair['table_number']}: {p1_name} vs {p2_name} {'✅ Logged' if pair['is_completed'] else '⏳ Pending'}"):
+        #                             with st.form(f"match_slip_form_{pair['id']}"):
+        #                                 col_p1, col_p2 = st.columns(2)
+        #                                 p1_score = col_p1.number_input(f"{p1_name} Score", min_value=0, value=0, key=f"p1_s_{pair['id']}")
+        #                                 p2_score = col_p2.number_input(f"{p2_name} Score", min_value=0, value=0, key=f"p2_s_{pair['id']}")
+                                        
+        #                                 is_draw = p1_score == p2_score
+        #                                 w_id = pair["player_1_id"] if p1_score > p2_score else (pair["player_2_id"] if p2_score > p1_score else None)
+        #                                 l_id = pair["player_2_id"] if p1_score > p2_score else (pair["player_1_id"] if p2_score > p1_score else None)
+                                        
+        #                                 # FIX: Changed from st.form_submit_with_button to st.form_submit_button
+        #                                 if st.form_submit_button("Verify & Lock Match Scores"):
+        #                                     try:
+        #                                         supabase.table("event_pairings").update({"is_completed": True}).eq("id", pair["id"]).execute()
+                                                
+        #                                         match_payload = {
+        #                                             "event_id": active_event["id"], "round_id": active_round["id"],
+        #                                             "game_system_id": active_event.get("game_system_id"),
+        #                                             "player_1_id": pair["player_1_id"], "p1_score_total": p1_score,
+        #                                             "player_2_id": pair["player_2_id"], "p2_score_total": p2_score,
+        #                                             "winner_id": w_id, "loser_id": l_id, "is_draw": is_draw, "status": "Logged"
+        #                                         }
+        #                                         supabase.table("matches").insert(match_payload).execute()
+        #                                         st.success("Match historical records logged accurately!")
+        #                                         time.sleep(1)
+        #                                         st.rerun()
+        #                                     except Exception as e:
+        #                                         st.error(f"Error logging match outputs: {e}")
+        #                 else:
+        #                     st.info("No pairings have been generated for this round matrix yet.")
+        #                     checked_in = supabase.table("event_participants").select("player_id, player_name").eq("event_id", active_event["id"]).eq("status", "Checked In").execute().data
+                            
+        #                     if len(checked_in) >= 2:
+        #                         st.write("### Manual Table Match Generator")
+        #                         p_map = {p["player_name"]: p["player_id"] for p in checked_in}
+                                
+        #                         p1_sel = st.selectbox("Player 1 Assignment", list(p_map.keys()), key="p1_quick_assign")
+        #                         p2_sel = st.selectbox("Player 2 Assignment", [k for k in p_map.keys() if k != p1_sel], key="p2_quick_assign")
+        #                         table_num = st.number_input("Table Number Assignment", min_value=1, value=1)
+                                
+        #                         if st.button("Generate Pairing Row"):
+        #                             new_pair_payload = {
+        #                                 "event_id": active_event["id"], "round_id": active_round["id"],
+        #                                 "player_1_id": p_map[p1_sel], "player_2_id": p_map[p2_sel],
+        #                                 "table_number": table_num, "is_completed": False
+        #                             }
+        #                             try:
+        #                                 supabase.table("event_pairings").insert(new_pair_payload).execute()
+        #                                 st.success("Manual pairing registered successfully!")
+        #                                 time.sleep(1)
+        #                                 st.rerun()
+        #                             except Exception as e:
+        #                                 st.error(f"Failed to generate custom pairing: {e}")
+        #                     else:
+        #                         st.warning("You must have a minimum of 2 users with 'Checked In' status on your roster to build pairings.")
+
+        # render_event_manager_page(supabase)
+    
+        # =========================================================================
+        # TAB 4: MANAGE PAIRINGS / CHALLENGES
+        # =========================================================================
+        with tab4:
+            if not active_event:
+                st.info("Select or create an event context first.")
+            else:
+                is_ladder = str(active_event.get("event_type", "")).lower() == "ladder"
+                
+                # =========================================================================
+                # LADDER TRACKING MODE: OPEN CHALLENGE LOG & OVERRULES
+                # =========================================================================
+                if is_ladder:
+                    st.subheader("🛡️ Ladder Challenge Log & Overrules")
+                    st.caption("Track open challenges and enforce the 2-week deadline rule.")
+                    
+                    # Fetch open matches for this ladder event
+                    open_challenges = supabase.table("matches").select("*").eq("event_id", active_event["id"]).eq("status", "Logged").order("played_at", desc=True).execute().data
+                    
+                    if open_challenges:
+                        prof_names = {p["id"]: (p["full_name"] or p["username"]) for p in all_profiles}
+                        
+                        for chal in open_challenges:
+                            challenger_name = prof_names.get(chal["attacker_id"], "Unknown Challenger")
+                            defender_name = prof_names.get(chal["defender_id"], "Unknown Defender")
+                            logged_date = pd.to_datetime(chal["played_at"])
+                            days_elapsed = (pd.Timestamp.now(tz='UTC') - logged_date).days
+                            days_remaining = max(14 - days_elapsed, 0)
+                            
+                            label = f"⚔️ {challenger_name} vs {defender_name} ({days_remaining} Days Remaining)"
+                            with st.expander(label):
+                                st.write(f"**Challenge Issued On:** {logged_date.strftime('%d/%m/%Y')}")
+                                st.write(f"**Days Active:** {days_elapsed} / 14 days maximum deadline.")
+                                
+                                st.markdown("---")
+                                st.write("⚖️ **Organiser Resolution Overrule**")
+                                st.info("If a player is unresponsive within the 2-week window, assign a default win below.")
+                                
+                                col_c, col_d = st.columns(2)
+                                if col_c.button("🏆 Default Win: Challenger", key=f"def_c_{chal['id']}", use_container_width=True):
+                                    try:
+                                        # Update the game row data directly to trigger the database ladder shift
+                                        supabase.table("matches").update({
+                                            "winner_id": chal["attacker_id"],
+                                            "loser_id": chal["defender_id"],
+                                            "p1_score_total": 10,  # Nominal score for tracking records
+                                            "p2_score_total": 0,
+                                            "status": "Logged"
+                                        }).eq("id", chal["id"]).execute()
+                                        
+                                        post_to_discord_webhook(f"⚖️ **Organiser Resolution:** {challenger_name} awarded default win against {defender_name} due to deadline expiration.")
+                                        st.success("Ladder recalculated via challenger default victory.")
+                                        time.sleep(1)
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Error executing update trigger: {e}")
+                                        
+                                if col_d.button("🏆 Default Win: Defender", key=f"def_d_{chal['id']}", use_container_width=True):
+                                    try:
+                                        supabase.table("matches").update({
+                                            "winner_id": chal["defender_id"],
+                                            "loser_id": chal["attacker_id"],
+                                            "p1_score_total": 0,
+                                            "p2_score_total": 10,
+                                            "status": "Logged"
+                                        }).eq("id", chal["id"]).execute()
+                                        
+                                        post_to_discord_webhook(f"⚖️ **Organiser Resolution:** {defender_name} awarded default win defense against {challenger_name} due to deadline expiration.")
+                                        st.success("Ladder recalculated via defender default defense.")
+                                        time.sleep(1)
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Error executing update trigger: {e}")
+                    else:
+                        st.info("No open challenges are currently logged in the sector field.")
+
+                # =========================================================================
+                # STANDARD MODE: SWISS PAIRINGS MATRIX GENERATION
+                # =========================================================================
                 else:
                     st.subheader("Pairings & Match Slip Entry")
                     rounds_data = supabase.table("event_rounds").select("*").eq("event_id", active_event["id"]).order("round_number").execute().data
@@ -2785,7 +3018,6 @@ else:
                                         w_id = pair["player_1_id"] if p1_score > p2_score else (pair["player_2_id"] if p2_score > p1_score else None)
                                         l_id = pair["player_2_id"] if p1_score > p2_score else (pair["player_1_id"] if p2_score > p1_score else None)
                                         
-                                        # FIX: Changed from st.form_submit_with_button to st.form_submit_button
                                         if st.form_submit_button("Verify & Lock Match Scores"):
                                             try:
                                                 supabase.table("event_pairings").update({"is_completed": True}).eq("id", pair["id"]).execute()
@@ -2795,47 +3027,43 @@ else:
                                                     "game_system_id": active_event.get("game_system_id"),
                                                     "player_1_id": pair["player_1_id"], "p1_score_total": p1_score,
                                                     "player_2_id": pair["player_2_id"], "p2_score_total": p2_score,
-                                                    "winner_id": w_id, "loser_id": l_id, "is_draw": is_draw, "status": "Logged"
-                                                }
+                                                    "winner_id": w_id,
+                                                    "loser_id": l_id,
+                                                    "is_draw": is_draw,
+                                                    "status": "Logged"}
                                                 supabase.table("matches").insert(match_payload).execute()
                                                 st.success("Match historical records logged accurately!")
                                                 time.sleep(1)
                                                 st.rerun()
                                             except Exception as e:
                                                 st.error(f"Error logging match outputs: {e}")
-                        else:
-                            st.info("No pairings have been generated for this round matrix yet.")
-                            checked_in = supabase.table("event_participants").select("player_id, player_name").eq("event_id", active_event["id"]).eq("status", "Checked In").execute().data
-                            
-                            if len(checked_in) >= 2:
-                                st.write("### Manual Table Match Generator")
-                                p_map = {p["player_name"]: p["player_id"] for p in checked_in}
-                                
-                                p1_sel = st.selectbox("Player 1 Assignment", list(p_map.keys()), key="p1_quick_assign")
-                                p2_sel = st.selectbox("Player 2 Assignment", [k for k in p_map.keys() if k != p1_sel], key="p2_quick_assign")
-                                table_num = st.number_input("Table Number Assignment", min_value=1, value=1)
-                                
-                                if st.button("Generate Pairing Row"):
-                                    new_pair_payload = {
-                                        "event_id": active_event["id"], "round_id": active_round["id"],
-                                        "player_1_id": p_map[p1_sel], "player_2_id": p_map[p2_sel],
-                                        "table_number": table_num, "is_completed": False
-                                    }
-                                    try:
-                                        supabase.table("event_pairings").insert(new_pair_payload).execute()
-                                        st.success("Manual pairing registered successfully!")
-                                        time.sleep(1)
-                                        st.rerun()
-                                    except Exception as e:
-                                        st.error(f"Failed to generate custom pairing: {e}")
-                            else:
-                                st.warning("You must have a minimum of 2 users with 'Checked In' status on your roster to build pairings.")
-
+                                            else:
+                                                st.info("No pairings have been generated for this round matrix yet.")
+                                                checked_in = supabase.table("event_participants").select("player_id, player_name").eq("event_id", active_event["id"]).eq("status", "Checked In").execute().data
+                                                if len(checked_in) >= 2:
+                                                    st.write("### Manual Table Match Generator")
+                                                    p_map = {p["player_name"]:
+                                                             p["player_id"] for p in checked_in}
+                                                    p1_sel = st.selectbox("Player 1 Assignment", list(p_map.keys()), key="p1_quick_assign")
+                                                    p2_sel = st.selectbox("Player 2 Assignment", [k for k in p_map.keys() if k != p1_sel], key="p2_quick_assign")
+                                                    table_num = st.number_input("Table Number Assignment", min_value=1, value=1)
+                                                    if st.button("Generate Pairing Row"):
+                                                        new_pair_payload = {"event_id": active_event["id"], "round_id": active_round["id"],"player_1_id": p_map[p1_sel], "player_2_id": p_map[p2_sel],"table_number": table_num, "is_completed": False}
+                                                        try:
+                                                            supabase.table("event_pairings").insert(new_pair_payload).execute()
+                                                            st.success("Manual pairing registered successfully!")
+                                                            time.sleep(1)st.rerun()
+                                                        except Exception as e:
+                                                            st.error(f"Failed to generate custom pairing: {e}")
+                                                        else:
+                                                            st.warning("You must have a minimum of 2 users with 'Checked In' status on your roster to build pairings.")
         render_event_manager_page(supabase)
-        
+
+
+    
   
-    elif st.session_state.page == "Graphs":
-        st.header("Graphs")
+    elif st.session_state.page == "Club Stats":
+        st.header("Club Stats")
         st.divider()
 
         # --- STEP 1: INITIAL DATA FETCH & SYSTEM SELECTION ---
