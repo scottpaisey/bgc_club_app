@@ -2744,6 +2744,40 @@ else:
                         parts = supabase.table("event_participants").select("*").eq("event_id", active_event["id"]).order("current_rank", nullsfirst=False).execute().data
                     else:
                         parts = supabase.table("event_participants").select("*").eq("event_id", active_event["id"]).order("player_name").execute().data
+
+                    st.write("➕ **Register Profile to Event**")
+                    profile_map = {f"{p['full_name']} (@{p['username']})" : p for p in all_profiles if p.get('full_name')}
+                    
+                    if profile_map:
+                        with st.form("add_player_form"):
+                            target_profile_str = st.selectbox("Select Profile System User", list(profile_map.keys()))
+                            custom_name = st.text_input("Override Player Display Name (Optional)")
+                            
+                            add_submitted = st.form_submit_button("Add Player to Roster")
+                            if add_submitted and target_profile_str:
+                                chosen_p = profile_map[target_profile_str]
+                                
+                                # Build entry payload explicitly matching your rules
+                                new_part = {
+                                    "event_id": active_event["id"],
+                                    "player_id": chosen_p["id"],
+                                    "player_name": custom_name if custom_name else chosen_p["full_name"],
+                                    "status": "Checked In",
+                                    "current_rank": None,        # Explicitly forces open entry starting pool status
+                                    "current_win_streak": 0,
+                                    "days_at_rank": 1
+                                }
+                                try:
+                                    supabase.table("event_participants").insert(new_part).execute()
+                                    st.success(f"Added {new_part['player_name']} to the Entry Pool!")
+                                    time.sleep(1)
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error("Unable to add player. Check if they are already registered.")
+                    else:
+                        st.warning("No global system profiles found with complete full names.")
+
+                    st.markdown("---")
                     
                     if parts:
                         # 🎯 LADDER VISUAL ANCHORS: Split out players into categories
@@ -2777,38 +2811,6 @@ else:
                     else:
                         st.info("No players registered for this event yet.")
                         
-                    st.markdown("---")
-                    st.write("➕ **Register Profile to Event**")
-                    profile_map = {f"{p['full_name']} (@{p['username']})" : p for p in all_profiles if p.get('full_name')}
-                    
-                    if profile_map:
-                        with st.form("add_player_form"):
-                            target_profile_str = st.selectbox("Select Profile System User", list(profile_map.keys()))
-                            custom_name = st.text_input("Override Player Display Name (Optional)")
-                            
-                            add_submitted = st.form_submit_button("Add Player to Roster")
-                            if add_submitted and target_profile_str:
-                                chosen_p = profile_map[target_profile_str]
-                                
-                                # Build entry payload explicitly matching your rules
-                                new_part = {
-                                    "event_id": active_event["id"],
-                                    "player_id": chosen_p["id"],
-                                    "player_name": custom_name if custom_name else chosen_p["full_name"],
-                                    "status": "Checked In",
-                                    "current_rank": None,        # Explicitly forces open entry starting pool status
-                                    "current_win_streak": 0,
-                                    "days_at_rank": 1
-                                }
-                                try:
-                                    supabase.table("event_participants").insert(new_part).execute()
-                                    st.success(f"Added {new_part['player_name']} to the Entry Pool!")
-                                    time.sleep(1)
-                                    st.rerun()
-                                except Exception as e:
-                                    st.error("Unable to add player. Check if they are already registered.")
-                    else:
-                        st.warning("No global system profiles found with complete full names.")
 
         
         #     # =========================================================================
