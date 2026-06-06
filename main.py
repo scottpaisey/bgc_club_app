@@ -2403,17 +2403,20 @@ else:
                             try:
                                 # Writing into matches triggers your custom PostgreSQL displacement re-ranking automatically
                                 supabase.table("matches").insert(match_payload).execute()
-                                # Broadcast results announcement to community feed
-                            post_to_discord_webhook(f"⚔️ Ladder Challenge Settled!\n**{user_name}** challenged {defender_row['player_name']}! Final Score: {p1_score} - {p2_score}.")
-                            st.success("🎉 Battle recorded successfully! The Sector Ladder positions have shifted.")
-                            time.sleep(1.5)
-                            st.rerun()
+                                
+                                # FIX: Properly indented the success routines inside the try block
+                                post_to_discord_webhook(f"⚔️ **Ladder Challenge Settled!**\n**{user_name}** challenged {defender_row['player_name']}! Final Score: {p1_score} - {p2_score}.")
+                                st.success("🎉 Battle recorded successfully! The Sector Ladder positions have shifted.")
+                                time.sleep(1.5)
+                                st.rerun()
+                                
                             except Exception as db_err:
                                 # Safe-catches the string 'COOLDOWN_VIOLATION' if they broke the back-to-back constraint rule
                                 if "COOLDOWN_VIOLATION" in str(db_err):
-                                    st.error("🚫 Tactical Cooldown Active: You cannot challenge the exact same opponent back-to-back! Please fight someone else first.")
+                                    st.error("🚫 **Tactical Cooldown Active:** You cannot challenge the exact same opponent back-to-back! Please fight someone else first.")
                                 else:
                                     st.error(f"Failed to submit match result. Database log error: {db_err}")
+
         # =========================================================================
         # TAB 3: BATTLE RECORDS (GAME LOG HISTORY)
         # =========================================================================
