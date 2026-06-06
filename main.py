@@ -703,7 +703,8 @@ else:
                         "defender_id": clean_id(setup['defender_id']),
                         "is_draw": is_draw,
                         "recorded_by": setup['p1_id'],
-                        "club_id": "ac85d0d1-24df-4b85-a4bd-0e5e944acd99",
+                        # "club_id": "ac85d0d1-24df-4b85-a4bd-0e5e944acd99", # BGC
+                        "club_id": "e0435ab2-d5e4-438f-8442-90cc27365cb5", # Test Club
                         "p1_killed_warlord": scores['p1_killed_warlord'],
                         "p2_killed_warlord": scores['p2_killed_warlord'],
                         "p1_tabled_opponent": scores['p1_tabled_opponent'],
