@@ -425,22 +425,27 @@ else:
                                   placeholder="Choose...", key="p1_fac_sel")
             
             if p1_fac:
-                # FIX: Safely extract the raw string value from the row
+                # 1. Locate rows matching your faction selection
                 matched_rows = p1_fac_df[p1_fac_df['faction'] == p1_fac]
-                p1_fac_id = str(matched_rows['faction_id'].values[0])
                 
-                # Fetch valid 11th edition detachments available for this faction
-                p1_det_resp = supabase.table("detachments_11th").select("*").eq("faction_id", p1_fac_id).execute()
-
-                if p1_det_resp.data:
-                    p1_det_df = pd.DataFrame(p1_det_resp.data)
-                    # Unique display name label combining the DP cost
-                    p1_det_df['display_label'] = p1_det_df['name'] + " (" + p1_det_df['dp_cost'].astype(str) + " DP)"
+                if not matched_rows.empty:
+                    # 2. Extract the clean string text UUID using .at or .iloc[0] position safely
+                    p1_fac_id = str(matched_rows.iloc[0]['faction_id'])
                     
-                    p1_chosen_labels = st.multiselect("Your Detachments (Max 3, Max 3 DP Total)", p1_det_df['display_label'].unique(), max_selections=3, key="p1_dets")
-                    p1_selected_dets = p1_det_df[p1_det_df['display_label'].isin(p1_chosen_labels)].to_dict(orient="records")
+                    # 3. Pull your newly created 11th edition detachments from Supabase
+                    p1_det_resp = supabase.table("detachments_11th").select("*").eq("faction_id", p1_fac_id).execute()
+
+                    if p1_det_resp.data:
+                        p1_det_df = pd.DataFrame(p1_det_resp.data)
+                        p1_det_df['display_label'] = p1_det_df['name'] + " (" + p1_det_df['dp_cost'].astype(str) + " DP)"
+                        
+                        p1_chosen_labels = st.multiselect("Your Detachments (Max 3, Max 3 DP Total)", p1_det_df['display_label'].unique(), max_selections=3, key="p1_dets")
+                        p1_selected_dets = p1_det_df[p1_det_df['display_label'].isin(p1_chosen_labels)].to_dict(orient="records")
+                    else:
+                        st.info(f"ℹ️ No multi-detachments found in DB matching faction_id: `{p1_fac_id}`")
                 else:
-                    st.info("ℹ️ No multi-detachments found for this faction yet.")
+                    st.error("❌ Could not map faction selections to view data rows.")
+
         else:
             p1_fac = st.selectbox("Your Faction", [], disabled=True)
 
