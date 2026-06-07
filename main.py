@@ -13,7 +13,6 @@ def post_to_discord_webhook(message_text):
     webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
     if not webhook_url:
         return False
-        
     payload = {"content": message_text}
     try:
         response = requests.post(webhook_url, json=payload)
@@ -23,7 +22,7 @@ def post_to_discord_webhook(message_text):
 
 # from supabase import create_client, ClientOptions
 
-st.set_page_config(page_title="BGC Club App", page_icon="🎲")
+st.set_page_config(page_title="BGC Event and Stats App", page_icon="🎲")
 
 def collapse_sidebar():
     # Targets the close 'X' or chevron button in the Streamlit sidebar
@@ -39,8 +38,6 @@ def get_supabase_client():
 
 supabase = get_supabase_client()
 
-
-
 def check_admin_access(supabase):
     """Returns True if the logged-in user is an admin, False otherwise."""
     if "user" not in st.session_state or st.session_state.user is None:
@@ -52,9 +49,7 @@ def check_admin_access(supabase):
     if res.data and res.data.get("role") in ["system_admin", "event_admin"]:
         return True
     return False
-
-
-
+    
 # Initialize session state variables if they don't exist
 if "page" not in st.session_state:
     st.session_state.page = None
