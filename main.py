@@ -2384,9 +2384,9 @@ else:
                             
                             match_payload = {
                                 "game_system_id": SYSTEM_11TH_ID,
-                                "event_id": event_id,
-                                "attacker_id": user_uid,        # Challenger
-                                "defender_id": defender_uid,    # Defender
+                                "event_id": str(event_id),          # FIX: Ensure this is NOT None
+                                "attacker_id": user_uid,
+                                "defender_id": defender_uid,
                                 "player_1_id": user_uid,
                                 "p1_score_total": p1_score,
                                 "player_2_id": defender_uid,
@@ -2399,6 +2399,7 @@ else:
                                 "recorded_by": user_uid,
                                 "status": "Logged"
                             }
+
                             
                             try:
                                 # Writing into matches triggers your custom PostgreSQL displacement re-ranking automatically
