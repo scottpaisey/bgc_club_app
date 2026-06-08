@@ -327,7 +327,7 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                 }
 
                 # FIX 2: Switch the page and rerun
-                st.session_state.page = system_short_name + "_scores"
+                st.session_state.page = "Log_Games_Score_Functions"
                 st.rerun()
 
 def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id, club_id, system_short_name):
@@ -652,56 +652,67 @@ else:
 
 
     
-    if st.session_state.page == "Log_Games_Functions": # Note: Use == instead of 'is' for string comparison
+
+    
+        
+        
+    if st.session_state.page == "Log_Games_Functions":
         st.header("Log Your Club Matches Here")
         st.divider()
 
-        # Connecting to database to get game system information
         try:
             system_data = supabase.table("game_systems").select("*").execute()
             df_system_data = pd.DataFrame(system_data.data)
         except Exception as e:
             st.error(f"Error fetching data: {e}")
-            df_system_data = pd.DataFrame() # Fallback empty dataframe
+            df_system_data = pd.DataFrame()
 
-        # Render the selectbox
         selected_name = st.selectbox(
             "Please select a game system:", 
             df_system_data['name'].unique() if not df_system_data.empty else [], 
             index=None, 
             placeholder="Choose...", 
-            key="system_select" # Changed key slightly to separate widget state from variable name
+            key="system_select" 
         )
 
-        # Initialize variables as None
-        system_page = None
-        system_id = None
-        system_name = None
-        system_is_active = None
-        system_short_name = None
-        system_edition = None
-        club_id = None
-
-        # Extract data only if a selection has been made
         if selected_name:
-            # Filter the dataframe for the matching row and select the first match (.iloc[0])
             matched_row = df_system_data[df_system_data['name'] == selected_name].iloc[0]
 
-            system_page = 'Log_Games_Functions'
-            system_id = matched_row['id']
-            system_name = matched_row['name']
-            system_is_active = matched_row['is_active']
-            system_short_name = matched_row['short_name']
-            system_edition = matched_row['edition']
-            club_id = 'e0435ab2-d5e4-438f-8442-90cc27365cb5'
+            # Save everything to session_state so the scoring page can read it later
+            st.session_state.system_page = 'Log_Games_Functions'
+            st.session_state.system_id = matched_row['id']
+            st.session_state.system_name = matched_row['name']
+            st.session_state.system_is_active = matched_row['is_active']
+            st.session_state.system_short_name = matched_row['short_name']
+            st.session_state.system_edition = matched_row['edition']
+            st.session_state.club_id = 'e0435ab2-d5e4-438f-8442-90cc27365cb5'
+            
+            # Pass the persistent session state values to your function
+            log_game_details(
+                st.session_state.system_page, 
+                st.session_state.system_name, 
+                st.session_state.system_id, 
+                st.session_state.system_short_name, 
+                None, None, None, 
+                st.session_state.club_id
+            )
         
-        # log_game_details(page, system_name, system_id, system_short_name, event_id, round_id, mission_id, club_id)
-        # current club id is a Test Club for testing purposes
-        log_game_details(system_page, system_name, system_id, system_short_name, None, None, None, club_id)
+    if st.session_state.page == "Log_Games_Score_Functions":
+        st.header("Log the Scores for your Match Here")
+        st.divider()    
         
-        
-        # # log_game_scores(page, system_name, system_id, event_id, round_id, mission_id, club_id, system_short_name)
-        # log_game_scores(page, system_name, system_id, event_id, round_id, mission_id, club_id, system_short_name)
+        # Verify that a game system was actually selected on the previous page
+        if "system_id" in st.session_state and st.session_state.system_id is not None:
+            log_game_scores(
+                "Log_Games_Score_Functions", 
+                st.session_state.system_name, 
+                st.session_state.system_id, 
+                None, None, None, 
+                st.session_state.club_id, 
+                st.session_state.system_short_name
+            )
+        else:
+            st.warning("Please go back and select a game system first.")
 
 
     
