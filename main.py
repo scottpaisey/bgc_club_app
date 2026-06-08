@@ -226,7 +226,7 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                 st.warning("⚠️ User not found. Recording as 'Guest'.")
 
         # 1. Allegiance Dropdown
-        p2_all_df = p2_df_system_factions[p2_df_system_factions['short_name'] == '40K']
+        p2_all_df = p2_df_system_factions[p2_df_system_factions['short_name'] == system_id]
         p2_all = st.selectbox("Opponents Allegiance", p2_all_df['allegiance'].unique(), index=None,
                               placeholder="Choose...", key="p2_all_sel")
 
