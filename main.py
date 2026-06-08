@@ -674,6 +674,7 @@ else:
         )
 
         # Initialize variables as None
+        system_page = None
         system_id = None
         system_name = None
         system_is_active = None
@@ -685,7 +686,8 @@ else:
         if selected_name:
             # Filter the dataframe for the matching row and select the first match (.iloc[0])
             matched_row = df_system_data[df_system_data['name'] == selected_name].iloc[0]
-            
+
+            system_page = 'Log_Games_Functions'
             system_id = matched_row['id']
             system_name = matched_row['name']
             system_is_active = matched_row['is_active']
@@ -695,7 +697,7 @@ else:
         
         # log_game_details(page, system_name, system_id, system_short_name, event_id, round_id, mission_id, club_id)
         # current club id is a Test Club for testing purposes
-        log_game_details(system_short_name, system_name, system_id, system_short_name, None, None, None, club_id)
+        log_game_details(system_page, system_name, system_id, system_short_name, None, None, None, club_id)
         
         
         # # log_game_scores(page, system_name, system_id, event_id, round_id, mission_id, club_id, system_short_name)
