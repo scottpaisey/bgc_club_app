@@ -679,6 +679,7 @@ else:
         system_is_active = None
         system_short_name = None
         system_edition = None
+        club_id = None
 
         # Extract data only if a selection has been made
         if selected_name:
