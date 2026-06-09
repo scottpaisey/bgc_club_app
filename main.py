@@ -153,6 +153,11 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
             p2_df_system_factions = pd.DataFrame(p2_response_system_factions.data)
             p2_response_account = supabase.table("profiles").select("*").execute()
             p2_df_account = pd.DataFrame(p2_response_account.data)
+            p1_response_detatchment = supabase.table("system_factions_11th").select("*").execute()
+            p1_df_detatchment = pd.DataFrame(p1_response_detatchment.data)
+            p2_response_detatchment = supabase.table("system_factions_11th").select("*").execute()
+            p2_df_detatchment = pd.DataFrame(p2_response_detatchment.data)
+
         except Exception as e:
             print(e)
 
@@ -266,26 +271,91 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                 p1_sub = st.selectbox("Your Sub-Faction", [], disabled=True)
             # p1_wf = st.toggle("Went First?*", key="p1_wf_key", on_change=handle_wf_toggle, args=("p1",))
 
-        # elif system_name == "Warhammer 40,000 (11th)":
-        #
-        #     # 2. Faction Dropdown
-        #     if p1_all:
-        #         # We filter the dataframe here
-        #         p1_fac_df = p1_all_df[p1_all_df['allegiance'] == p1_all]
-        #         # We use faction_df to get the unique names for the options
-        #         p1_fac = st.selectbox("Your Faction", p1_fac_df['faction'].unique(), index=None,
-        #                               placeholder="Choose...", key="p1_fac_sel")
-        #     else:
-        #         p1_fac = st.selectbox("Your Faction", [], disabled=True)
-        #     # 3. Sub-Faction Dropdown (MUST use filtered options)
-        #     if p1_fac:
-        #         p1_sub_df = p1_fac_df[p1_fac_df['faction'] == p1_fac]
-        #         p1_sub = st.selectbox("Your Sub-Faction", p1_sub_df['subfaction'].unique(), index=None,
-        #                               placeholder="Choose...", key="p1_sub_sel")
-        #     else:
-        #         p1_sub = st.selectbox("Your Sub-Faction", [], disabled=True)
-        #     # p1_wf = st.toggle("Went First?*", key="p1_wf_key", on_change=handle_wf_toggle, args=("p1",))
-
+        elif system_name == "Warhammer 40,000 (11th)":
+        
+            # 2. Faction Dropdown
+            if p1_all:
+                # We filter the dataframe here
+                p1_fac_df = p1_all_df[p1_all_df['allegiance'] == p1_all]
+                # We use faction_df to get the unique names for the options
+                p1_fac = st.selectbox("Your Faction", p1_fac_df['faction'].unique(), index=None,
+                                      placeholder="Choose...", key="p1_fac_sel")
+            else:
+                p1_fac = st.selectbox("Your Faction", [], disabled=True)
+                
+            # =========================================================================
+            # 11TH EDITION MULTI-DETACHMENT CASCADE LOGIC
+            # =========================================================================
+            p1_sub_1, p1_sub_2, p1_sub_3 = None, None, None
+            
+            if p1_fac and not p1_df_detatchment.empty:
+                # Find the main faction_id from your master rows
+                matched_faction_rows = p1_fac_df[p1_fac_df['faction'] == p1_fac]
+                p1_fac_id = matched_faction_rows.iloc[0]['faction_id']
+                
+                # Filter down the master detachment table to options matching this specific army
+                faction_dets = p1_df_detatchment[p1_df_detatchment['faction_id'] == p1_fac_id].copy()
+                
+                if not faction_dets.empty:
+                    # Create a clear string display label mapping helper for selectboxes
+                    faction_dets['display_label'] = faction_dets['name'] + " (" + faction_dets['dp_cost'].astype(str) + " DP)"
+                    label_to_row = {row['display_label']: row for _, row in faction_dets.iterrows()}
+                    
+                    # --- Dropdown 1 ---
+                    d1_options = list(label_to_row.keys())
+                    p1_sub_1_label = st.selectbox("Your First Detachment*", [None] + d1_options, index=0, key="p1_sub_sel_1")
+                    d1_row = label_to_row.get(p1_sub_1_label)
+                    
+                    # --- Dropdown 2 (Excludes Dropdown 1) ---
+                    d2_options = [k for k in label_to_row.keys() if k != p1_sub_1_label] if p1_sub_1_label else []
+                    p1_sub_2_label = st.selectbox("Your Second Detachment (Optional)", [None] + d2_options, index=0, key="p1_sub_sel_2", disabled=not p1_sub_1_label)
+                    d2_row = label_to_row.get(p1_sub_2_label)
+                    
+                    # --- Dropdown 3 (Excludes Dropdown 1 & 2) ---
+                    d3_options = [k for k in label_to_row.keys() if k != p1_sub_1_label and k != p1_sub_2_label] if p1_sub_2_label else []
+                    p1_sub_3_label = st.selectbox("Your Third Detachment (Optional)", [None] + d3_options, index=0, key="p1_sub_sel_3", disabled=not p1_sub_2_label)
+                    d3_row = label_to_row.get(p1_sub_3_label)
+                    
+                    # Collect active rows chosen by the user
+                    selected_rows = [r for r in [d1_row, d2_row, d3_row] if r is not None]
+                    
+                    # -------------------------------------------------------------
+                    # 11TH EDITION RULE VALIDATION ENGINE
+                    # -------------------------------------------------------------
+                    if selected_rows:
+                        # Rule A: Detachment Point (DP) Cap Verification
+                        dp_cap = 3 if game_size == "Strike Force" else 2
+                        total_dp_used = sum(r['dp_cost'] for r in selected_rows)
+                        
+                        if total_dp_used > dp_cap:
+                            st.error(f"❌ **Illegal Detachment Roster:** Total cost is {total_dp_used} DP! Maximum allowed for {game_size or 'this game size'} is {dp_cap} DP.")
+                        
+                        # Rule B: Keyword Overlap Verification
+                        seen_keywords = []
+                        keyword_clash = False
+                        
+                        for r in selected_rows:
+                            if r.get('keywords'): # Checking if keywords list array exists
+                                overlap = set(seen_keywords).intersection(set(r['keywords']))
+                                if overlap:
+                                    keyword_clash = True
+                                    st.error(f"❌ **Illegal Composition:** Overlapping faction keywords found: {list(overlap)}. Selected detachments cannot share keywords.")
+                                seen_keywords.extend(r['keywords'])
+                        
+                        if total_dp_used <= dp_cap and not keyword_clash:
+                            st.success(f"✅ **Army Composition Validated:** {total_dp_used}/{dp_cap} DP utilized. Formations are combat-ready!")
+                            
+                            # Assign structural variable string values to pass forward to session state payloads
+                            p1_sub_1 = d1_row['id'] if d1_row else None
+                            p1_sub_2 = d2_row['id'] if d2_row else None
+                            p1_sub_3 = d3_row['id'] if d3_row else None
+                else:
+                    st.info("ℹ️ No multi-detachments compiled for this faction within the system ledger yet.")
+            else:
+                st.selectbox("Your First Detachment", [], disabled=True)
+                st.selectbox("Your Second Detachment", [], disabled=True)
+                st.selectbox("Your Third Detachment", [], disabled=True)
+        
         st.write("**Opponent Details**")
 
         # 1. Fetch all profiles from Supabase to check names against
@@ -374,7 +444,7 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
             else:
                 p2_sub = st.selectbox("Opponents Kill Team", [], disabled=True)
 
-        else:
+        elif system_name == "Age of Sigmar":
             # 2. Faction Dropdown (MUST use filtered options)
             if p2_all:
                 # We filter the dataframe here
@@ -391,7 +461,106 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                                       placeholder="Choose...", key="p2_sub_sel")
             else:
                 p2_sub = st.selectbox("Opponents Sub-Faction", [], disabled=True)
-            # p2_wf = st.toggle("Went First?*", key="p2_wf_key", on_change=handle_wf_toggle, args=("p1",))
+
+        elif system_name == "Warhammer 40,000":
+            # 2. Faction Dropdown (MUST use filtered options)
+            if p2_all:
+                # We filter the dataframe here
+                p2_fac_df = p2_all_df[p2_all_df['allegiance'] == p2_all]
+                # We use faction_df to get the unique names for the options
+                p2_fac = st.selectbox("Opponents Faction", p2_fac_df['faction'].unique(), index=None,
+                                      placeholder="Choose...", key="p2_fac_sel")
+            else:
+                p2_fac = st.selectbox("Opponents Faction", [], disabled=True)
+            # 3. Sub-Faction Dropdown (MUST use filtered options)
+            if p2_fac:
+                p2_sub_df = p2_fac_df[p2_fac_df['faction'] == p2_fac]
+                p2_sub = st.selectbox("Opponents Sub-Faction", p2_sub_df['subfaction'].unique(), index=None,
+                                      placeholder="Choose...", key="p2_sub_sel")
+            else:
+                p2_sub = st.selectbox("Opponents Sub-Faction", [], disabled=True)
+
+        elif system_name == "Warhammer 40,000 (11th)":
+            # 2. Opponent Faction Dropdown
+            if p2_all:
+                p2_fac_df = p2_all_df[p2_all_df['allegiance'] == p2_all]
+                p2_fac = st.selectbox("Opponent's Faction", p2_fac_df['faction'].unique(), index=None,
+                                      placeholder="Choose...", key="p2_fac_sel")
+            else:
+                p2_fac = st.selectbox("Opponent's Faction", [], disabled=True)
+                
+            # =========================================================================
+            # OPPONENT 11TH EDITION MULTI-DETACHMENT CASCADE LOGIC
+            # =========================================================================
+            p2_sub_1, p2_sub_2, p2_sub_3 = None, None, None
+            
+            if p2_fac and not p2_df_detatchment.empty:
+                # Find the main faction_id from your master rows for the opponent
+                matched_p2_faction_rows = p2_fac_df[p2_fac_df['faction'] == p2_fac]
+                p2_fac_id = matched_p2_faction_rows.iloc[0]['faction_id']
+                
+                # Filter down the master detachment table to options matching the opponent's army
+                p2_faction_dets = p2_df_detatchment[p2_df_detatchment['faction_id'] == p2_fac_id].copy()
+                
+                if not p2_faction_dets.empty:
+                    # Create a clear string display label mapping helper for opponent selectboxes
+                    p2_faction_dets['display_label'] = p2_faction_dets['name'] + " (" + p2_faction_dets['dp_cost'].astype(str) + " DP)"
+                    p2_label_to_row = {row['display_label']: row for _, row in p2_faction_dets.iterrows()}
+                    
+                    # --- Opponent Dropdown 1 ---
+                    opp_d1_options = list(p2_label_to_row.keys())
+                    p2_sub_1_label = st.selectbox("Opponent's First Detachment*", [None] + opp_d1_options, index=0, key="p2_sub_sel_1")
+                    opp_d1_row = p2_label_to_row.get(p2_sub_1_label)
+                    
+                    # --- Opponent Dropdown 2 (Excludes Dropdown 1) ---
+                    opp_d2_options = [k for k in p2_label_to_row.keys() if k != p2_sub_1_label] if p2_sub_1_label else []
+                    p2_sub_2_label = st.selectbox("Opponent's Second Detachment (Optional)", [None] + opp_d2_options, index=0, key="p2_sub_sel_2", disabled=not p2_sub_1_label)
+                    opp_d2_row = p2_label_to_row.get(p2_sub_2_label)
+                    
+                    # --- Opponent Dropdown 3 (Excludes Dropdown 1 & 2) ---
+                    opp_d3_options = [k for k in p2_label_to_row.keys() if k != p2_sub_1_label and k != p2_sub_2_label] if p2_sub_2_label else []
+                    p2_sub_3_label = st.selectbox("Opponent's Third Detachment (Optional)", [None] + opp_d3_options, index=0, key="p2_sub_sel_3", disabled=not p2_sub_2_label)
+                    opp_d3_row = p2_label_to_row.get(p2_sub_3_label)
+                    
+                    # Collect active rows chosen by the opponent
+                    p2_selected_rows = [r for r in [opp_d1_row, opp_d2_row, opp_d3_row] if r is not None]
+                    
+                    # -------------------------------------------------------------
+                    # OPPONENT 11TH EDITION RULE VALIDATION ENGINE
+                    # -------------------------------------------------------------
+                    if p2_selected_rows:
+                        # Rule A: Detachment Point (DP) Cap Verification
+                        dp_cap = 3 if game_size == "Strike Force" else 2
+                        p2_total_dp_used = sum(r['dp_cost'] for r in p2_selected_rows)
+                        
+                        if p2_total_dp_used > dp_cap:
+                            st.error(f"❌ **Illegal Opponent Detachment Roster:** Total cost is {p2_total_dp_used} DP! Maximum allowed for {game_size or 'this game size'} is {dp_cap} DP.")
+                        
+                        # Rule B: Keyword Overlap Verification
+                        p2_seen_keywords = []
+                        p2_keyword_clash = False
+                        
+                        for r in p2_selected_rows:
+                            if r.get('keywords'): # Checking if keywords list array exists
+                                p2_overlap = set(p2_seen_keywords).intersection(set(r['keywords']))
+                                if p2_overlap:
+                                    p2_keyword_clash = True
+                                    st.error(f"❌ **Illegal Opponent Composition:** Overlapping faction keywords found: {list(p2_overlap)}. Selected detachments cannot share keywords.")
+                                p2_seen_keywords.extend(r['keywords'])
+                        
+                        if p2_total_dp_used <= dp_cap and not p2_keyword_clash:
+                            st.success(f"✅ **Opponent Army Composition Validated:** {p2_total_dp_used}/{dp_cap} DP utilised. Formations are combat-ready!")
+                            
+                            # Assign structural variables to pass forward to session state payloads
+                            p2_sub_1 = opp_d1_row['id'] if opp_d1_row else None
+                            p2_sub_2 = opp_d2_row['id'] if opp_d2_row else None
+                            p2_sub_3 = opp_d3_row['id'] if opp_d3_row else None
+                else:
+                    st.info("ℹ️ No multi-detachments compiled for this opponent faction within the system ledger yet.")
+            else:
+                st.selectbox("Opponent's First Detachment", [], disabled=True, key="p2_sub_sel_1_dis")
+                st.selectbox("Opponent's Second Detachment", [], disabled=True, key="p2_sub_sel_2_dis")
+                st.selectbox("Opponent's Third Detachment", [], disabled=True, key="p2_sub_sel_3_dis")
 
         attacker_id = None
         defender_id = None
@@ -463,7 +632,13 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                     "attacker_id": attacker_id,
                     "defender_id": defender_id,
                     "went_first_id": went_first_id,
-                    "game_size": game_size
+                    "game_size": game_size,
+                    "p1_sub_sel_1_dis": p1_sub_sel_1_dis,
+                    "p1_sub_sel_2_dis": p1_sub_sel_2_dis,
+                    "p1_sub_sel_3_dis": p1_sub_sel_3_dis,
+                    "p2_sub_sel_1_dis": p2_sub_sel_1_dis,
+                    "p2_sub_sel_2_dis": p2_sub_sel_2_dis,
+                    "p2_sub_sel_3_dis": p2_sub_sel_3_dis
                 }
 
                 # FIX 2: Switch the page and rerun
@@ -495,6 +670,9 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
         p1_fac = st.session_state.game_data.get("p1_fac", None)
         p1_sub = st.session_state.game_data.get("p1_sub", None)
         p1_op_count = st.session_state.game_data.get("p1_op_count", None)
+        p1_sub_sel_1_dis = st.session_state.game_data.get("p1_sub_sel_1_dis", None)
+        p1_sub_sel_2_dis = st.session_state.game_data.get("p1_sub_sel_2_dis", None)
+        p1_sub_sel_3_dis = st.session_state.game_data.get("p1_sub_sel_3_dis", None)
 
 
         p2_id = st.session_state.game_data.get("p2_id", None)
@@ -504,6 +682,9 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
         p2_fac = st.session_state.game_data.get("p2_fac", None)
         p2_sub = st.session_state.game_data.get("p2_sub", None)
         p2_op_count = st.session_state.game_data.get("p2_op_count", None)
+        p2_sub_sel_1_dis = st.session_state.game_data.get("p2_sub_sel_1_dis", None)
+        p2_sub_sel_2_dis = st.session_state.game_data.get("p2_sub_sel_2_dis", None)
+        p2_sub_sel_3_dis = st.session_state.game_data.get("p2_sub_sel_3_dis", None)
 
 
         # 1. The Data Entry Form
@@ -554,6 +735,14 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                         else:
                             p1_br = 0
 
+                    if system_name == 'Warhammer 40,000 (11th)':
+                        p1_pri = st.number_input("Primary Score*", 0, 45, key="p1_p")
+                        p1_sec = st.number_input("Secondary Score*", 0, 45, key="p1_s")
+                        if st.toggle("Battle Ready?*", key="p1_br"):
+                            p1_br = 10
+                        else:
+                            p1_br = 0
+
                     if system_name == "Middle Earth: Strategy Battle Game":
                         p1_pri = st.number_input("Total Score*", 0, 20, key="p1_p")
                         p1_sec = 0
@@ -579,6 +768,14 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                     st.write(f"{p2_sub}")
 
                     if system_name == 'Warhammer 40,000':
+                        p2_pri = st.number_input("Primary Score*", 0, 45, key="p2_p")
+                        p2_sec = st.number_input("Secondary Score*", 0, 45, key="p2_s")
+                        if st.toggle("Battle Ready?*", key="p2_br"):
+                            p2_br = 10
+                        else:
+                            p2_br = 0
+
+                    if system_name == 'Warhammer 40,000 (11th)':
                         p2_pri = st.number_input("Primary Score*", 0, 45, key="p2_p")
                         p2_sec = st.number_input("Secondary Score*", 0, 45, key="p2_s")
                         if st.toggle("Battle Ready?*", key="p2_br"):
@@ -620,9 +817,9 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
 
                     st.session_state.temp_scores = {
                         "p1_pri": p1_pri, "p1_sec": p1_sec, "p1_br": p1_br, "p1_killed_warlord": p1_killed_warlord, "p1_kills": p1_kills, "p1_kill_grade": p1_kill_grade,
-                        "p1_tabled_opponent": p1_tabled_opponent,
+                        "p1_tabled_opponent": p1_tabled_opponent, "p1_sub_sel_1_dis": p1_sub_sel_1_dis, "p1_sub_sel_2_dis": p1_sub_sel_2_dis, "p1_sub_sel_3_dis": p1_sub_sel_3_dis,
                         "p2_pri": p2_pri, "p2_sec": p2_sec, "p2_br": p2_br, "p2_killed_warlord": p2_killed_warlord, "p2_kills": p2_kills, "p2_kill_grade": p2_kill_grade,
-                        "p2_tabled_opponent": p2_tabled_opponent
+                        "p2_tabled_opponent": p2_tabled_opponent, "p2_sub_sel_1_dis": p2_sub_sel_1_dis, "p2_sub_sel_2_dis": p2_sub_sel_2_dis, "p2_sub_sel_3_dis": p2_sub_sel_3_dis
                     }
 
                     st.session_state.confirm_submit = True
@@ -663,6 +860,16 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                     f"\n\nSecondary: {scores['p1_sec']}"
                     f"\n\nBattle Ready: {scores['p1_br']}"
                 ])
+            elif system_name == "Warhammer 40,000 (11th)":
+                p1_lines.append([
+                    f"\n\nFaction: {setup['p1_fac']}"
+                    f"\n\n1 - Detatchment: {setup['p1_sub_sel_1_dis']}"
+                    f"\n\n2 - Detatchment: {setup['p1_sub_sel_2_dis']}"
+                    f"\n\n3 - Detatchment: {setup['p1_sub_sel_3_dis']}"
+                    f"\n\nPrimary: {scores['p1_pri']}"
+                    f"\n\nSecondary: {scores['p1_sec']}"
+                    f"\n\nBattle Ready: {scores['p1_br']}"
+                ])
             elif system_name == "Middle Earth: Strategy Battle Game":
                 p1_lines.append([
                     f"\n\nArmy List: {setup['p1_sub']}"
@@ -690,6 +897,17 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                     f"\n\nSecondary: {scores['p2_sec']}"
                     f"\n\nBattle Ready: {scores['p2_br']}"
                 ])
+            elif system_name == "Warhammer 40,000 (11th)":
+                p2_lines.append([
+                    f"\n\nFaction: {setup['p2_fac']}"
+                    f"\n\n1 - Detatchment: {setup['p2_sub_sel_1_dis']}"
+                    f"\n\n2 - Detatchment: {setup['p2_sub_sel_2_dis']}"
+                    f"\n\n3 - Detatchment: {setup['p2_sub_sel_3_dis']}"
+                    f"\n\nPrimary: {scores['p2_pri']}"
+                    f"\n\nSecondary: {scores['p2_sec']}"
+                    f"\n\nBattle Ready: {scores['p2_br']}"
+                ])
+
             elif system_name == "Middle Earth: Strategy Battle Game":
                 p2_lines.append([
                     f"\n\nArmy List: {setup['p2_sub']}"
@@ -760,6 +978,23 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
 
                 supabase.table("matches").insert(match_details).execute()
 
+                match_detachments_11th_p1 = {
+                    "game_system_id": setup['system_id'],
+                    "match_id" : setup['?']
+                    "player_id" : setup['p1_id']
+                    "detachment_id" : setup['?']                  
+                }
+                match_detachments_11th_p2 = {
+                    "game_system_id": setup['system_id'],
+                    "match_id" : setup['?']
+                    "player_id" : setup['p2_id']
+                    "detachment_id" : setup['?']                  
+                }
+                
+                supabase.table("match_detachments_11th").insert(match_detachments_11th_p1).execute()
+
+                supabase.table("match_detachments_11th").insert(match_detachments_11th_p2).execute()
+                
                 st.success("Game posted to Supabase!")
 
                 st.session_state.game_data = {}
