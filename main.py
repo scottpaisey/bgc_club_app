@@ -24,9 +24,23 @@ def post_to_discord_webhook(message_text):
 
 st.set_page_config(page_title="BGC Event and Stats App", page_icon="🎲")
 
+# def collapse_sidebar():
+#     # Targets the close 'X' or chevron button in the Streamlit sidebar
+#     streamlit_js_eval(js_expressions='window.parent.document.querySelector("button[kind=\'headerNoPadding\']").click()')
+
 def collapse_sidebar():
-    # Targets the close 'X' or chevron button in the Streamlit sidebar
-    streamlit_js_eval(js_expressions='window.parent.document.querySelector("button[kind=\'headerNoPadding\']").click()')
+    """Targets the modern Streamlit sidebar chevron toggle button icon safely."""
+    js_script = """
+    const sidebarButton = window.parent.document.querySelector('[data-testid="stSidebarCollapseButton"] button');
+    if (sidebarButton) {
+        sidebarButton.click();
+    }
+    """
+    try:
+        streamlit_js_eval(js_expressions=js_script)
+    except Exception:
+        pass
+
 
 @st.cache_resource
 def get_supabase_client():
@@ -150,6 +164,8 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                                      placeholder="Choose...", key="game_s")
         elif system_name == "Middle Earth: Strategy Battle Game":
             game_size = st.number_input("Game Size", 0, 1500, key="game_s")
+        elif system_name == "Kill Team":
+            game_size = "Kill Team"
 
         st.write("**Your Details**")
 
@@ -172,7 +188,66 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                                       placeholder="Choose...", key="p1_sub_sel")
             else:
                 p1_sub = st.selectbox("Your Army List", [], disabled=True)
-        else:
+
+        elif system_name == "Kill Team":
+            # 2. Faction Dropdown
+            if p1_all:
+                # We filter the dataframe here
+                p1_fac_df = p1_all_df[p1_all_df['allegiance'] == p1_all]
+                # We use faction_df to get the unique names for the options
+                p1_fac = st.selectbox("Your Faction", p1_fac_df['faction'].unique(), index=None,
+                                      placeholder="Choose...", key="p1_fac_sel")
+            else:
+                p1_fac = st.selectbox("Your Faction", [], disabled=True)
+            # 3. Sub-Faction Dropdown (MUST use filtered options)
+            if p1_fac:
+                p1_sub_df = p1_fac_df[p1_fac_df['faction'] == p1_fac]
+                p1_sub = st.selectbox("Your Kill Team", p1_sub_df['subfaction'].unique(), index=None,
+                                      placeholder="Choose...", key="p1_sub_sel")
+                if p1_sub:
+                    # Get the specific data for the selected subfaction
+                    selected_sub = p1_sub_df[p1_sub_df['subfaction'] == p1_sub].iloc[0]
+                    min_val = int(selected_sub['kt_min_op'])
+                    max_val = int(selected_sub['kt_max_op'])
+
+                    # Disable if min and max are the same
+                    is_disabled = (min_val == max_val)
+
+                    p1_op_count = st.number_input(
+                        "Number of Operatives?*",
+                        min_value=min_val,
+                        max_value=max_val,
+                        value=min_val,  # Default to min
+                        disabled=is_disabled,
+                        key="p1_op_count"
+                    )
+                else:
+                    st.number_input("Number of Operatives?*", disabled=True, key="p1_op_count_placeholder")
+
+            else:
+                p1_sub = st.selectbox("Your Kill Team", [], disabled=True)
+            # p1_wf = st.toggle("Went First?*", key="p1_wf_key", on_change=handle_wf_toggle, args=("p1",))
+
+        # elif system_name == "Age Of Sigmar":
+        #     # 2. Faction Dropdown
+        #     if p1_all:
+        #         # We filter the dataframe here
+        #         p1_fac_df = p1_all_df[p1_all_df['allegiance'] == p1_all]
+        #         # We use faction_df to get the unique names for the options
+        #         p1_fac = st.selectbox("Your Faction", p1_fac_df['faction'].unique(), index=None,
+        #                               placeholder="Choose...", key="p1_fac_sel")
+        #     else:
+        #         p1_fac = st.selectbox("Your Faction", [], disabled=True)
+        #     # 3. Sub-Faction Dropdown (MUST use filtered options)
+        #     if p1_fac:
+        #         p1_sub_df = p1_fac_df[p1_fac_df['faction'] == p1_fac]
+        #         p1_sub = st.selectbox("Your Sub-Faction", p1_sub_df['subfaction'].unique(), index=None,
+        #                               placeholder="Choose...", key="p1_sub_sel")
+        #     else:
+        #         p1_sub = st.selectbox("Your Sub-Faction", [], disabled=True)
+        #     # p1_wf = st.toggle("Went First?*", key="p1_wf_key", on_change=handle_wf_toggle, args=("p1",))
+
+        elif system_name == "Warhammer 40,000":
             # 2. Faction Dropdown
             if p1_all:
                 # We filter the dataframe here
@@ -190,6 +265,26 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
             else:
                 p1_sub = st.selectbox("Your Sub-Faction", [], disabled=True)
             # p1_wf = st.toggle("Went First?*", key="p1_wf_key", on_change=handle_wf_toggle, args=("p1",))
+
+        # elif system_name == "Warhammer 40,000 (11th)":
+        #
+        #     # 2. Faction Dropdown
+        #     if p1_all:
+        #         # We filter the dataframe here
+        #         p1_fac_df = p1_all_df[p1_all_df['allegiance'] == p1_all]
+        #         # We use faction_df to get the unique names for the options
+        #         p1_fac = st.selectbox("Your Faction", p1_fac_df['faction'].unique(), index=None,
+        #                               placeholder="Choose...", key="p1_fac_sel")
+        #     else:
+        #         p1_fac = st.selectbox("Your Faction", [], disabled=True)
+        #     # 3. Sub-Faction Dropdown (MUST use filtered options)
+        #     if p1_fac:
+        #         p1_sub_df = p1_fac_df[p1_fac_df['faction'] == p1_fac]
+        #         p1_sub = st.selectbox("Your Sub-Faction", p1_sub_df['subfaction'].unique(), index=None,
+        #                               placeholder="Choose...", key="p1_sub_sel")
+        #     else:
+        #         p1_sub = st.selectbox("Your Sub-Faction", [], disabled=True)
+        #     # p1_wf = st.toggle("Went First?*", key="p1_wf_key", on_change=handle_wf_toggle, args=("p1",))
 
         st.write("**Opponent Details**")
 
@@ -240,6 +335,45 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                                       placeholder="Choose...", key="p2_sub_sel")
             else:
                 p2_sub = st.selectbox("Opponents Army List", [], disabled=True)
+
+        elif system_name == "Kill Team":
+            # 2. Faction Dropdown (MUST use filtered options)
+            if p2_all:
+                # We filter the dataframe here
+                p2_fac_df = p2_all_df[p2_all_df['allegiance'] == p2_all]
+                # We use faction_df to get the unique names for the options
+                p2_fac = st.selectbox("Opponents Faction", p2_fac_df['faction'].unique(), index=None,
+                                      placeholder="Choose...", key="p2_fac_sel")
+            else:
+                p2_fac = st.selectbox("Opponents Faction", [], disabled=True)
+            # 3. Sub-Faction Dropdown (MUST use filtered options)
+            if p2_fac:
+                p2_sub_df = p2_fac_df[p2_fac_df['faction'] == p2_fac]
+                p2_sub = st.selectbox("Opponents Kill Team", p2_sub_df['subfaction'].unique(), index=None,
+                                      placeholder="Choose...", key="p2_sub_sel")
+                # Logic for dynamic min/max
+                if p2_sub:
+                    # Get the specific data for the selected subfaction
+                    selected_sub = p2_sub_df[p2_sub_df['subfaction'] == p2_sub].iloc[0]
+                    min_val = int(selected_sub['kt_min_op'])
+                    max_val = int(selected_sub['kt_max_op'])
+
+                    # Disable if min and max are the same
+                    is_disabled = (min_val == max_val)
+
+                    p2_op_count = st.number_input(
+                        "Number of Operatives?*",
+                        min_value=min_val,
+                        max_value=max_val,
+                        value=min_val,  # Default to min
+                        disabled=is_disabled,
+                        key="p2_op_count"
+                    )
+                else:
+                    st.number_input("Number of Operatives?*", disabled=True, key="p2_op_count_placeholder")
+            else:
+                p2_sub = st.selectbox("Opponents Kill Team", [], disabled=True)
+
         else:
             # 2. Faction Dropdown (MUST use filtered options)
             if p2_all:
@@ -305,6 +439,10 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                 p1_row = p1_df_system_factions[p1_df_system_factions['subfaction'] == p1_sub].iloc[0]
                 p2_row = p2_df_system_factions[p2_df_system_factions['subfaction'] == p2_sub].iloc[0]
 
+                if system_name != "Kill Team":
+                    p1_op_count = None
+                    p2_op_count = None
+
                 # Store data for the next page
                 st.session_state.game_data = {
                     "system_id": p1_row['system_id'],
@@ -320,6 +458,8 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                     "p2_sub": p2_sub,
                     "p1_fac_id": p1_row['faction_id'],
                     "p2_fac_id": p2_row['faction_id'],
+                    "p1_op_count": p1_op_count,
+                    "p2_op_count": p2_op_count,
                     "attacker_id": attacker_id,
                     "defender_id": defender_id,
                     "went_first_id": went_first_id,
@@ -354,6 +494,8 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
         p1_all = st.session_state.game_data.get("p1_all", None)
         p1_fac = st.session_state.game_data.get("p1_fac", None)
         p1_sub = st.session_state.game_data.get("p1_sub", None)
+        p1_op_count = st.session_state.game_data.get("p1_op_count", None)
+
 
         p2_id = st.session_state.game_data.get("p2_id", None)
         p2_name = st.session_state.game_data.get("p2_name", None)
@@ -361,9 +503,41 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
         p2_all = st.session_state.game_data.get("p2_all", None)
         p2_fac = st.session_state.game_data.get("p2_fac", None)
         p2_sub = st.session_state.game_data.get("p2_sub", None)
+        p2_op_count = st.session_state.game_data.get("p2_op_count", None)
+
 
         # 1. The Data Entry Form
         if not st.session_state.confirm_submit:
+
+            if system_name == "Kill Team":
+                # The lookup table based on your image
+                # Format: {starting_count: [Grade 1 threshold, Grade 2, Grade 3, Grade 4, Grade 5]}
+                KILL_GRADE_MAPPING = {
+                    5: [1, 2, 3, 4, 5],
+                    6: [1, 2, 4, 5, 6],
+                    7: [1, 3, 4, 6, 7],
+                    8: [2, 3, 5, 6, 8],
+                    9: [2, 4, 5, 7, 9],
+                    10: [2, 4, 6, 8, 10],
+                    11: [2, 4, 7, 9, 11],
+                    12: [2, 5, 7, 10, 12],
+                    13: [3, 5, 8, 10, 13],
+                    14: [3, 6, 8, 11, 14]
+                }
+
+                def calculate_kill_grade(kills, enemy_starting_count):
+                    """Returns the Kill Grade (0-5) based on kills and enemy starting size."""
+                    if enemy_starting_count not in KILL_GRADE_MAPPING or kills == 0:
+                        return 0
+
+                    thresholds = KILL_GRADE_MAPPING[enemy_starting_count]
+                    grade = 0
+                    # Iterate through thresholds; index + 1 is the grade
+                    for i, threshold in enumerate(thresholds):
+                        if kills >= threshold:
+                            grade = i + 1
+                    return grade
+
             with st.form("score_submission_form"):
                 col3, col4 = st.columns(2)
                 with col3:
@@ -384,6 +558,11 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                         p1_pri = st.number_input("Total Score*", 0, 20, key="p1_p")
                         p1_sec = 0
                         p1_br = 0
+
+                    if system_name == 'Kill Team':
+                        p1_pri = st.number_input("Crit Op Score*", 0, 6, key="p1_p")
+                        p1_sec = st.number_input("Tac Op Score*", 0, 6, key="p1_s")
+                        p1_kills = st.number_input("Operatives Killed*", 0, p2_op_count, key="p1_kills")
 
                     if st.toggle("Slain Enemy Warlord?*", key="p1_killed_warlord"):
                         p1_killed_warlord = True
@@ -412,6 +591,11 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                         p2_sec = 0
                         p2_br = 0
 
+                    if system_name == 'Kill Team':
+                        p2_pri = st.number_input("Crit Op Score*", 0, 6, key="p2_p")
+                        p2_sec = st.number_input("Tac Op Score*", 0, 6, key="p2_s")
+                        p2_kills = st.number_input("Operatives Killed?*", 0, p1_op_count, key="p2_kills")
+
 
                     if st.toggle("Slain Enemy Warlord?*", key="p2_killed_warlord"):
                         p2_killed_warlord = True
@@ -427,10 +611,17 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
 
                 if submit_scores:
 
+                    if system_name == 'Kill Team':
+                        p1_kill_grade = calculate_kill_grade(p1_kills, p2_op_count)
+                        p2_kill_grade = calculate_kill_grade(p2_kills, p1_op_count)
+                    else:
+                        p1_kill_grade = 0
+                        p2_kill_grade = 0
+
                     st.session_state.temp_scores = {
-                        "p1_pri": p1_pri, "p1_sec": p1_sec, "p1_br": p1_br, "p1_killed_warlord": p1_killed_warlord,
+                        "p1_pri": p1_pri, "p1_sec": p1_sec, "p1_br": p1_br, "p1_killed_warlord": p1_killed_warlord, "p1_kills": p1_kills, "p1_kill_grade": p1_kill_grade,
                         "p1_tabled_opponent": p1_tabled_opponent,
-                        "p2_pri": p2_pri, "p2_sec": p2_sec, "p2_br": p2_br, "p2_killed_warlord": p2_killed_warlord,
+                        "p2_pri": p2_pri, "p2_sec": p2_sec, "p2_br": p2_br, "p2_killed_warlord": p2_killed_warlord, "p2_kills": p2_kills, "p2_kill_grade": p2_kill_grade,
                         "p2_tabled_opponent": p2_tabled_opponent
                     }
 
@@ -445,8 +636,8 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
             setup = st.session_state.game_data
             scores = st.session_state.temp_scores
             # Calculate Totals
-            p1_total = scores['p1_pri'] + scores['p1_sec'] + scores['p1_br']
-            p2_total = scores['p2_pri'] + scores['p2_sec'] + scores['p2_br']
+            p1_total = scores['p1_pri'] + scores['p1_sec'] + scores['p1_br'] + scores['p1_kill_grade']
+            p2_total = scores['p2_pri'] + scores['p2_sec'] + scores['p2_br'] + scores['p1_kill_grade']
 
             # Determine Results
             if p1_total > p2_total:
@@ -472,11 +663,21 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                     f"\n\nSecondary: {scores['p1_sec']}"
                     f"\n\nBattle Ready: {scores['p1_br']}"
                 ])
-            if system_name == "Middle Earth: Strategy Battle Game":
+            elif system_name == "Middle Earth: Strategy Battle Game":
                 p1_lines.append([
                     f"\n\nArmy List: {setup['p1_sub']}"
                     f"\n\nTotal Score: {scores['p1_pri']}"
                 ])
+            elif system_name == "Kill Team":
+                p1_lines.append([
+                    f"\n\nFaction: {setup['p1_fac']}"
+                    f"\n\nKill Team: {setup['p1_sub']}"
+                    f"\n\nCrit Op: {scores['p1_pri']}"
+                    f"\n\nTac Op: {scores['p1_sec']}"
+                    f"\n\nKill Op: {scores['p1_kill_grade']}"
+                ])
+
+
 
             p2_lines = [
                 f"Name: **{setup['p2_name']}**"
@@ -489,12 +690,19 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                     f"\n\nSecondary: {scores['p2_sec']}"
                     f"\n\nBattle Ready: {scores['p2_br']}"
                 ])
-            if system_name == "Middle Earth: Strategy Battle Game":
+            elif system_name == "Middle Earth: Strategy Battle Game":
                 p2_lines.append([
                     f"\n\nArmy List: {setup['p2_sub']}"
                     f"\n\nTotal Score: {scores['p2_pri']}"
                 ])
-
+            elif system_name == "Kill Team":
+                p2_lines.append([
+                    f"\n\nFaction: {setup['p2_fac']}"
+                    f"\n\nKill Team: {setup['p2_sub']}"
+                    f"\n\nCrit Op: {scores['p2_pri']}"
+                    f"\n\nTac Op: {scores['p2_sec']}"
+                    f"\n\nKill Op: {scores['p2_kill_grade']}"
+                ])
 
             col_a.write(p1_lines)
             col_b.write(p2_lines)
@@ -521,9 +729,9 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                     "p1_score_01": scores['p1_pri'],
                     "p1_score_02": scores['p1_sec'],
                     "p1_score_03": scores['p1_br'],
-                    "p1_score_04": 0,
-                    "p1_score_05": 0,
-                    "p1_score_total": scores['p1_pri'] + scores['p1_sec'] + scores['p1_br'],
+                    "p1_score_04": scores['p1_kill_grade'],
+                    "p1_score_05": scores['p1_kills'],
+                    "p1_score_total": scores['p1_pri'] + scores['p1_sec'] + scores['p1_br'] + scores['p1_kill_grade'],
                     "p1_score_mar": p1_total - p2_total,
                     "player_2_id": clean_id(setup['p2_id']),
                     "player_2_name": setup['p2_name'],
@@ -531,9 +739,9 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                     "p2_score_01": scores['p2_pri'],
                     "p2_score_02": scores['p2_sec'],
                     "p2_score_03": scores['p2_br'],
-                    "p2_score_04": 0,
-                    "p2_score_05": 0,
-                    "p2_score_total": scores['p2_pri'] + scores['p2_sec'] + scores['p2_br'],
+                    "p2_score_04": scores['p2_kill_grade'],
+                    "p2_score_05": scores['p2_kills'],
+                    "p2_score_total": scores['p2_pri'] + scores['p2_sec'] + scores['p2_br'] + scores['p2_kill_grade'],
                     "p2_score_mar": p2_total - p1_total,
                     "went_first_id": clean_id(setup['went_first_id']),
                     "winner_id": clean_id(winner_id),
@@ -569,6 +777,7 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
 
 
 
+
 def log_game_league():
     st.rerun()
 
@@ -595,6 +804,7 @@ else:
     if st.sidebar.button("Personal Stats"):
         st.session_state.page = "Personal Stats"
         collapse_sidebar()
+        time.sleep(0.1)
         st.rerun()
     if st.sidebar.button("Log Out"):
         supabase.auth.sign_out()
@@ -606,27 +816,33 @@ else:
     if st.sidebar.button("Home"):
         st.session_state.page = None
         collapse_sidebar()
+        time.sleep(0.1)
         st.rerun()
     if st.sidebar.button("Log Games"):
         st.session_state.page = "Log Games"
         collapse_sidebar()
+        time.sleep(0.1)
         st.rerun()
     if st.session_state.get("user_role") == "system_admin":
         if st.sidebar.button("BGC League"):
             st.session_state.page = "BGC_League"
             collapse_sidebar()
+            time.sleep(0.1)
             st.rerun()
         if st.sidebar.button("BGC Ladder"):
             st.session_state.page = "BGC_Ladder"
             collapse_sidebar()
+            time.sleep(0.1)
             st.rerun()
     if st.sidebar.button("Event Results"):
         st.session_state.page = "Event_Results"
         collapse_sidebar()
+        time.sleep(0.1)
         st.rerun()
     if st.sidebar.button("Club Stats"): # was Graphs
         st.session_state.page = "Club Stats"
         collapse_sidebar()
+        time.sleep(0.1)
         st.rerun()
     if st.session_state.get("user_role") != "member":
         st.sidebar.header("Admin Pages")
@@ -634,28 +850,27 @@ else:
         if st.sidebar.button("Graphs_2"):
             st.session_state.page = "Graphs_2"
             collapse_sidebar()
+            time.sleep(0.1)
             st.rerun()
         if st.sidebar.button("Current Events"):
             st.session_state.page = "Current_Events"
             collapse_sidebar()
+            time.sleep(0.1)
             st.rerun()
         if st.sidebar.button("Log Games (Functions)"):
             st.session_state.page = "Log_Games_Functions"
             collapse_sidebar()
+            time.sleep(0.1)
             st.rerun()
 
     if st.session_state.get("user_role") in ("system_admin", "event_admin"):
         if st.sidebar.button("Event Manager"):
             st.session_state.page = "Event_Manager"
             collapse_sidebar()
+            time.sleep(0.1)
             st.rerun()        
 
 
-    
-
-    
-        
-        
     if st.session_state.page == "Log_Games_Functions":
         st.header("Log Your Club Matches Here")
         st.divider()
