@@ -934,8 +934,7 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                 return val
 
             if c1.button("✅ Yes, Post Results", type="primary", use_container_width=True):
-                # --- DATABASE INSERT LOGIC HERE ---
-                # inserting game data into table
+                # 1. Compile primary match metrics
                 match_details = {
                     "game_system_id": setup['system_id'],
                     "event_id": event_id,
@@ -967,7 +966,6 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                     "attacker_id": clean_id(setup['attacker_id']),
                     "defender_id": clean_id(setup['defender_id']),
                     "is_draw": is_draw,
-                    # "played_at": ,
                     "recorded_by": setup['p1_id'],
                     "club_id": club_id,
                     "p1_killed_warlord": scores['p1_killed_warlord'],
@@ -976,39 +974,62 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                     "p2_tabled_opponent": scores['p2_tabled_opponent'],
                 }
 
-                supabase.table("matches").insert(match_details).execute()
+                try:
+                    # 2. Post match row to generate unique match UUID
+                    match_insert_res = supabase.table("matches").insert(match_details).execute()
+                    
+                    if match_insert_res.data:
+                        # Extract the freshly generated UUID
+                        new_match_id = match_insert_res.data[0]['id']
+                        
+                        # 3. Compile Player 1 multi-detachment array
+                        # Gathers any valid IDs stored from your selections (p1_sub_1, p1_sub_2, p1_sub_3)
+                        p1_dets = [setup.get('p1_sub_1'), setup.get('p1_sub_2'), setup.get('p1_sub_3')]
+                        match_detachments_p1_payload = [
+                            {
+                                "match_id": new_match_id,
+                                "player_id": setup['p1_id'],
+                                "detachment_id": det_id
+                            }
+                            for det_id in p1_dets if det_id is not None
+                        ]
+                        
+                        if match_detachments_p1_payload:
+                            supabase.table("match_detachments_11th").insert(match_detachments_p1_payload).execute()
 
-                match_detachments_11th_p1 = {
-                    "game_system_id": setup['system_id'],
-                    "match_id" : setup['?']
-                    "player_id" : setup['p1_id']
-                    "detachment_id" : setup['?']                  
-                }
-                match_detachments_11th_p2 = {
-                    "game_system_id": setup['system_id'],
-                    "match_id" : setup['?']
-                    "player_id" : setup['p2_id']
-                    "detachment_id" : setup['?']                  
-                }
-                
-                supabase.table("match_detachments_11th").insert(match_detachments_11th_p1).execute()
+                        # 4. Compile Player 2 multi-detachment array (Only if P2 is an authenticated profile)
+                        if clean_id(setup['p2_id']):
+                            p2_dets = [setup.get('p2_sub_1'), setup.get('p2_sub_2'), setup.get('p2_sub_3')]
+                            match_detachments_p2_payload = [
+                                {
+                                    "match_id": new_match_id,
+                                    "player_id": setup['p2_id'],
+                                    "detachment_id": det_id
+                                }
+                                for det_id in p2_dets if det_id is not None
+                            ]
+                            
+                            if match_detachments_p2_payload:
+                                supabase.table("match_detachments_11th").insert(match_detachments_p2_payload).execute()
+                    
+                    # 5. Broadcast alerts and wipe processing session state variables
+                    post_to_discord_webhook(f"⚔️ **Match Logged!** {setup['p1_name']} vs {setup['p2_name']}. Result: {p1_total} - {p2_total}")
+                    st.success("Game posted to Supabase!")
 
-                supabase.table("match_detachments_11th").insert(match_detachments_11th_p2).execute()
-                
-                st.success("Game posted to Supabase!")
+                    st.session_state.game_data = {}
+                    st.session_state.temp_scores = {}
+                    st.session_state.confirm_submit = False
+                    st.session_state.selected_system = system_short_name
+                    st.session_state.page = None
+                    st.rerun()
 
-                st.session_state.game_data = {}
-                st.session_state.temp_scores = {}
-                st.session_state.confirm_submit = False
-                # st.session_state.page = None  # Go back to home
-                # st.rerun()
-                st.session_state.selected_system = system_short_name
-                st.session_state.page = None
-                st.rerun()
+                except Exception as e:
+                    st.error(f"❌ Database error: Could not log game outputs. {e}")
 
             if c2.button("❌ No, Edit Scores", use_container_width=True):
                 st.session_state.confirm_submit = False
                 st.rerun()
+
 
 
 
