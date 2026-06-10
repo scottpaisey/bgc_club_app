@@ -163,7 +163,7 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
         st.subheader("Game Details")
 
         # Game Size
-        if system_name == 'Warhammer 40,000':
+        if system_name in ('Warhammer 40,000', 'Warhammer 40,000 (11th)'):
             game_size = st.selectbox('Game Size', ['Strike Force', 'Incursion', 'Combat Patrol', 'Other'], index=None,
                                      placeholder="Choose...", key="game_s")
         elif system_name == "Middle Earth: Strategy Battle Game":
