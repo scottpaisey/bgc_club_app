@@ -285,7 +285,7 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
             # =========================================================================
             # 11TH EDITION MULTI-DETACHMENT CASCADE LOGIC
             # =========================================================================
-            p1_sub_1, p1_sub_2, p1_sub_3 = None, None, None
+            p1_sub_1, p1_sub_2, p1_sub_3, p1_sub = None, None, None, None
             
             if p1_fac and not p1_df_detatchment.empty:
                 # 1. Safely locate the row inside your filtered dataframe
@@ -506,7 +506,7 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
             # =========================================================================
             # OPPONENT 11TH EDITION MULTI-DETACHMENT CASCADE LOGIC
             # =========================================================================
-            p2_sub_1, p2_sub_2, p2_sub_3 = None, None, None
+            p2_sub_1, p2_sub_2, p2_sub_3, p2_sub = None, None, None, None
             
             if p2_fac and not p2_df_detatchment.empty:
                 # 1. Safely locate the row inside your filtered dataframe
