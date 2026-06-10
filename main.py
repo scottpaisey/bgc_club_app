@@ -300,23 +300,58 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                     faction_dets['display_label'] = faction_dets['subfaction'] + " (" + faction_dets['dp_cost'].astype(str) + " DP)"
                     label_to_row = {row['display_label']: row for _, row in faction_dets.iterrows()}
                     
-                    # --- Dropdown 1 ---
+                    # Establish point cap metrics based on game size
+                    dp_cap = 3 if game_size == "Strike Force" else 2
+                    
+                    # --- Dropdown 1: All available options ---
                     d1_options = list(label_to_row.keys())
                     p1_sub_1_label = st.selectbox("Your First Detachment*", [None] + d1_options, index=0, key="p1_sub_sel_1")
                     d1_row = label_to_row.get(p1_sub_1_label)
                     
-                    # --- Dropdown 2 (Excludes Dropdown 1) ---
-                    d2_options = [k for k in label_to_row.keys() if k != p1_sub_1_label] if p1_sub_1_label else []
-                    p1_sub_2_label = st.selectbox("Your Second Detachment (Optional)", [None] + d2_options, index=0, key="p1_sub_sel_2", disabled=not p1_sub_1_label)
+                    # --- Helper Function to filter options for Next Slots ---
+                    def get_valid_next_options(chosen_rows):
+                        current_dp = sum(r['dp_cost'] for r in chosen_rows)
+                        remaining_dp = dp_cap - current_dp
+                        
+                        # Collect all keywords currently locked in
+                        used_keywords = []
+                        for r in chosen_rows:
+                            if r.get('keywords') and isinstance(r['keywords'], (list, set, tuple)):
+                                used_keywords.extend(r['keywords'])
+                        
+                        valid_labels = []
+                        for label, row in label_to_row.items():
+                            # Rule 1: Skip if already selected
+                            if any(row['id'] == c['id'] for c in chosen_rows):
+                                continue
+                            # Rule 2: Skip if it exceeds remaining DP space
+                            if row['dp_cost'] > remaining_dp:
+                                continue
+                            # Rule 3: Skip if it shares any locked keywords
+                            if row.get('keywords') and isinstance(row['keywords'], (list, set, tuple)):
+                                if set(used_keywords).intersection(set(row['keywords'])):
+                                    continue
+                                    
+                            valid_labels.append(label)
+                        return valid_labels
+
+                    # --- Dropdown 2 (Filters based on Dropdown 1 choices) ---
+                    active_dets_for_d2 = [d1_row] if d1_row is not None else []
+                    d2_options = get_valid_next_options(active_dets_for_d2) if d1_row is not None else []
+                    
+                    p1_sub_2_label = st.selectbox("Your Second Detachment (Optional)", [None] + d2_options, index=0, key="p1_sub_sel_2", disabled=not d2_options or not p1_sub_1_label)
                     d2_row = label_to_row.get(p1_sub_2_label)
                     
-                    # --- Dropdown 3 (Excludes Dropdown 1 & 2) ---
-                    d3_options = [k for k in label_to_row.keys() if k != p1_sub_1_label and k != p1_sub_2_label] if p1_sub_2_label else []
-                    p1_sub_3_label = st.selectbox("Your Third Detachment (Optional)", [None] + d3_options, index=0, key="p1_sub_sel_3", disabled=not p1_sub_2_label)
+                    # --- Dropdown 3 (Filters based on Dropdown 1 & 2 choices) ---
+                    active_dets_for_d3 = [r for r in [d1_row, d2_row] if r is not None]
+                    d3_options = get_valid_next_options(active_dets_for_d3) if d2_row is not None else []
+                    
+                    p1_sub_3_label = st.selectbox("Your Third Detachment (Optional)", [None] + d3_options, index=0, key="p1_sub_sel_3", disabled=not d3_options or not p1_sub_2_label)
                     d3_row = label_to_row.get(p1_sub_3_label)
                     
-                    # Collect active rows chosen by the user
+                    # Gather validated entries
                     selected_rows = [r for r in [d1_row, d2_row, d3_row] if r is not None]
+
                     
                     # -------------------------------------------------------------
                     # 11TH EDITION RULE VALIDATION ENGINE
@@ -512,27 +547,55 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                 p2_faction_dets = p2_df_detatchment[p2_df_detatchment['faction_id'] == p2_fac_id].copy()
                 
                 if not p2_faction_dets.empty:
-                    # IMPROVEMENT: Use 'subfaction' matching Player 1 table definitions
                     p2_faction_dets['display_label'] = p2_faction_dets['subfaction'] + " (" + p2_faction_dets['dp_cost'].astype(str) + " DP)"
                     p2_label_to_row = {row['display_label']: row for _, row in p2_faction_dets.iterrows()}
+                    
+                    dp_cap = 3 if game_size == "Strike Force" else 2
                     
                     # --- Opponent Dropdown 1 ---
                     opp_d1_options = list(p2_label_to_row.keys())
                     p2_sub_1_label = st.selectbox("Opponent's First Detachment*", [None] + opp_d1_options, index=0, key="p2_sub_sel_1")
                     opp_d1_row = p2_label_to_row.get(p2_sub_1_label)
                     
-                    # --- Opponent Dropdown 2 (Excludes Dropdown 1) ---
-                    opp_d2_options = [k for k in p2_label_to_row.keys() if k != p2_sub_1_label] if p2_sub_1_label else []
-                    p2_sub_2_label = st.selectbox("Opponent's Second Detachment (Optional)", [None] + opp_d2_options, index=0, key="p2_sub_sel_2", disabled=not p2_sub_1_label)
+                    # --- Opponent Filter Function ---
+                    def get_p2_valid_next_options(chosen_rows):
+                        current_dp = sum(r['dp_cost'] for r in chosen_rows)
+                        remaining_dp = dp_cap - current_dp
+                        
+                        p2_used_keywords = []
+                        for r in chosen_rows:
+                            if r.get('keywords') and isinstance(r['keywords'], (list, set, tuple)):
+                                p2_used_keywords.extend(r['keywords'])
+                        
+                        valid_labels = []
+                        for label, row in p2_label_to_row.items():
+                            if any(row['id'] == c['id'] for c in chosen_rows):
+                                continue
+                            if row['dp_cost'] > remaining_dp:
+                                continue
+                            if row.get('keywords') and isinstance(row['keywords'], (list, set, tuple)):
+                                if set(p2_used_keywords).intersection(set(row['keywords'])):
+                                    continue
+                                    
+                            valid_labels.append(label)
+                        return valid_labels
+
+                    # --- Opponent Dropdown 2 ---
+                    p2_dets_for_d2 = [opp_d1_row] if opp_d1_row is not None else []
+                    opp_d2_options = get_p2_valid_next_options(p2_dets_for_d2) if opp_d1_row is not None else []
+                    
+                    p2_sub_2_label = st.selectbox("Opponent's Second Detachment (Optional)", [None] + opp_d2_options, index=0, key="p2_sub_sel_2", disabled=not opp_d2_options or not p2_sub_1_label)
                     opp_d2_row = p2_label_to_row.get(p2_sub_2_label)
                     
-                    # --- Opponent Dropdown 3 (Excludes Dropdown 1 & 2) ---
-                    opp_d3_options = [k for k in p2_label_to_row.keys() if k != p2_sub_1_label and k != p2_sub_2_label] if p2_sub_2_label else []
-                    p2_sub_3_label = st.selectbox("Opponent's Third Detachment (Optional)", [None] + opp_d3_options, index=0, key="p2_sub_sel_3", disabled=not p2_sub_2_label)
+                    # --- Opponent Dropdown 3 ---
+                    p2_dets_for_d3 = [r for r in [opp_d1_row, opp_d2_row] if r is not None]
+                    opp_d3_options = get_p2_valid_next_options(p2_dets_for_d3) if opp_d2_row is not None else []
+                    
+                    p2_sub_3_label = st.selectbox("Opponent's Third Detachment (Optional)", [None] + opp_d3_options, index=0, key="p2_sub_sel_3", disabled=not opp_d3_options or not p2_sub_2_label)
                     opp_d3_row = p2_label_to_row.get(p2_sub_3_label)
                     
-                    # Collect active rows chosen by the opponent
                     p2_selected_rows = [r for r in [opp_d1_row, opp_d2_row, opp_d3_row] if r is not None]
+
                     
                     # -------------------------------------------------------------
                     # OPPONENT 11TH EDITION RULE VALIDATION ENGINE
@@ -652,12 +715,12 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                     "defender_id": defender_id,
                     "went_first_id": went_first_id,
                     "game_size": game_size,
-                    "p1_sub_sel_1_dis": p1_sub_sel_1_dis,
-                    "p1_sub_sel_2_dis": p1_sub_sel_2_dis,
-                    "p1_sub_sel_3_dis": p1_sub_sel_3_dis,
-                    "p2_sub_sel_1_dis": p2_sub_sel_1_dis,
-                    "p2_sub_sel_2_dis": p2_sub_sel_2_dis,
-                    "p2_sub_sel_3_dis": p2_sub_sel_3_dis
+                    "p1_sub_1": p1_sub_1,
+                    "p1_sub_2": p1_sub_2,
+                    "p1_sub_3": p1_sub_3,
+                    "p2_sub_1": p2_sub_1,
+                    "p2_sub_2": p2_sub_2,
+                    "p2_sub_3": p2_sub_3
                 }
 
                 # FIX 2: Switch the page and rerun
