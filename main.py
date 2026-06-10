@@ -345,10 +345,11 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                         if total_dp_used <= dp_cap and not keyword_clash:
                             st.success(f"✅ **Army Composition Validated:** {total_dp_used}/{dp_cap} DP utilized. Formations are combat-ready!")
                             
-                            # Assign structural variable string values to pass forward to session state payloads
-                            p1_sub_1 = d1_row['id'] if d1_row else None
-                            p1_sub_2 = d2_row['id'] if d2_row else None
-                            p1_sub_3 = d3_row['id'] if d3_row else None
+                            # FIX: Explicitly check against None to avoid the ambiguous Pandas truth check
+                            p1_sub_1 = d1_row['id'] if d1_row is not None else None
+                            p1_sub_2 = d2_row['id'] if d2_row is not None else None
+                            p1_sub_3 = d3_row['id'] if d3_row is not None else None
+
                 else:
                     st.info("ℹ️ No multi-detachments compiled for this faction within the system ledger yet.")
             else:
@@ -503,8 +504,8 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                 p2_faction_dets = p2_df_detatchment[p2_df_detatchment['faction_id'] == p2_fac_id].copy()
                 
                 if not p2_faction_dets.empty:
-                    # Create a clear string display label mapping helper for opponent selectboxes
-                    p2_faction_dets['display_label'] = p2_faction_dets['name'] + " (" + p2_faction_dets['dp_cost'].astype(str) + " DP)"
+                    # IMPROVEMENT: Use 'subfaction' matching Player 1 table definitions
+                    p2_faction_dets['display_label'] = p2_faction_dets['subfaction'] + " (" + p2_faction_dets['dp_cost'].astype(str) + " DP)"
                     p2_label_to_row = {row['display_label']: row for _, row in p2_faction_dets.iterrows()}
                     
                     # --- Opponent Dropdown 1 ---
@@ -541,7 +542,8 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                         p2_keyword_clash = False
                         
                         for r in p2_selected_rows:
-                            if r.get('keywords'): # Checking if keywords list array exists
+                            # IMPROVEMENT: Add type checking safety to handle empty cells / NaN float elements
+                            if r.get('keywords') and isinstance(r['keywords'], (list, set, tuple)):
                                 p2_overlap = set(p2_seen_keywords).intersection(set(r['keywords']))
                                 if p2_overlap:
                                     p2_keyword_clash = True
@@ -551,10 +553,10 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                         if p2_total_dp_used <= dp_cap and not p2_keyword_clash:
                             st.success(f"✅ **Opponent Army Composition Validated:** {p2_total_dp_used}/{dp_cap} DP utilised. Formations are combat-ready!")
                             
-                            # Assign structural variables to pass forward to session state payloads
-                            p2_sub_1 = opp_d1_row['id'] if opp_d1_row else None
-                            p2_sub_2 = opp_d2_row['id'] if opp_d2_row else None
-                            p2_sub_3 = opp_d3_row['id'] if opp_d3_row else None
+                            # IMPROVEMENT: Explicitly check 'is not None' to eliminate the Pandas ambiguous truth check crash
+                            p2_sub_1 = opp_d1_row['id'] if opp_d1_row is not None else None
+                            p2_sub_2 = opp_d2_row['id'] if opp_d2_row is not None else None
+                            p2_sub_3 = opp_d3_row['id'] if opp_d3_row is not None else None
                 else:
                     st.info("ℹ️ No multi-detachments compiled for this opponent faction within the system ledger yet.")
             else:
