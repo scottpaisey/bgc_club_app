@@ -741,9 +741,21 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
         p2_sub_sel_2_dis = st.session_state.game_data.get("p2_sub_sel_2_dis", None)
         p2_sub_sel_3_dis = st.session_state.game_data.get("p2_sub_sel_3_dis", None)
 
-
         # 1. The Data Entry Form
         if not st.session_state.confirm_submit:
+
+            # --- INITIALISE REGIONAL SCORING SYSTEM METRICS ---
+            p1_pri = 0
+            p1_sec = 0
+            p1_br = 0
+            p1_kills = 0
+            p1_kill_grade = 0
+    
+            p2_pri = 0
+            p2_sec = 0
+            p2_br = 0
+            p2_kills = 0
+            p2_kill_grade = 0
 
             if system_name == "Kill Team":
                 # The lookup table based on your image
