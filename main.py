@@ -315,19 +315,22 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                     
                     # --- Helper Function: Evaluates clean native dictionaries safely ---
                     def get_valid_next_options(chosen_rows):
-                        current_dp = sum(r['dp_cost'] for r in chosen_rows)
+                        # Filter out any None values from the chosen rows array first
+                        active_choices = [c for c in chosen_rows if c is not None]
+                        
+                        current_dp = sum(r['dp_cost'] for r in active_choices)
                         remaining_dp = dp_cap - current_dp
                         
                         # Collect all keywords currently locked in
                         used_keywords = []
-                        for r in chosen_rows:
+                        for r in active_choices:
                             if r.get('keywords') and isinstance(r['keywords'], (list, set, tuple)):
                                 used_keywords.extend(r['keywords'])
                         
                         valid_labels = []
                         for label, row in label_to_row.items():
-                            # Rule 1: Skip if already selected (Safe native dict lookup)
-                            if any(row['id'] == c['id'] for c in chosen_rows):
+                            # Rule 1: Skip if already selected (FIXED: Added safety filter checking against active_choices)
+                            if any(row['id'] == c['id'] for c in active_choices):
                                 continue
                             # Rule 2: Skip if it exceeds remaining DP space
                             if row['dp_cost'] > remaining_dp:
@@ -573,17 +576,21 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                     
                     # --- Opponent Filter Function ---
                     def get_p2_valid_next_options(chosen_rows):
-                        current_dp = sum(r['dp_cost'] for r in chosen_rows)
+                        # Filter out any None values from the opponent chosen rows array first
+                        active_p2_choices = [c for c in chosen_rows if c is not None]
+                        
+                        current_dp = sum(r['dp_cost'] for r in active_p2_choices)
                         remaining_dp = dp_cap - current_dp
                         
                         p2_used_keywords = []
-                        for r in chosen_rows:
+                        for r in active_p2_choices:
                             if r.get('keywords') and isinstance(r['keywords'], (list, set, tuple)):
                                 p2_used_keywords.extend(r['keywords'])
                         
                         valid_labels = []
                         for label, row in p2_label_to_row.items():
-                            if any(row['id'] == c['id'] for c in chosen_rows):
+                            # FIXED: Added safety filter checking against active_p2_choices
+                            if any(row['id'] == c['id'] for c in active_p2_choices):
                                 continue
                             if row['dp_cost'] > remaining_dp:
                                 continue
@@ -593,6 +600,7 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                                     
                             valid_labels.append(label)
                         return valid_labels
+
 
                     # --- Opponent Dropdown 2 ---
                     p2_dets_for_d2 = [opp_d1_row] if opp_d1_row is not None else []
