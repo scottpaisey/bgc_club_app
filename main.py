@@ -605,64 +605,72 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
         )
 
         if st.button("Proceed to Scoring"):
-            # 1. Define your conditions
             names_entered = p1_name and p2_name
-            allegiance_selected = p1_all and p2_all
+            
+            # Faction selection validation based on game system requirements
             if system_name != "Middle Earth: Strategy Battle Game":
                 factions_selected = p1_fac and p2_fac
             else:
-                p1_fact = None
-                p2_fact = None
-            sub_factions_selected = p1_sub and p2_sub
+                factions_selected = True  # MESBG doesn't use standard faction dropdown arrays
+                p1_fac_id = None
+                p2_fac_id = None
+
+            # --- SYSTEM-AWARE SUBFACTION / DETACHMENT VALIDATION ENGINE ---
+            if system_name == "Warhammer 40,000 (11th)":
+                # FIX: 11th Ed only requires the primary First Detachment slot to be filled for both sides
+                sub_factions_selected = (p1_sub_1 is not None) and (p2_sub_1 is not None)
+                p1_sub, p2_sub = None, None
+            else:
+                # 10th Ed / other systems use the singular p1_sub fallback string check
+                sub_factions_selected = p1_sub and p2_sub
+                p1_sub_1, p1_sub_2, p1_sub_3 = None, None, None
+                p2_sub_1, p2_sub_2, p2_sub_3 = None, None, None
+                
             actual_p2_id = p2_id if (p2_id and p2_id != p2_name) else None
 
             if not names_entered:
                 st.error("❌ Both player names are mandatory.")
+            elif not factions_selected:
+                st.error("❌ Both players must select an Allegiance and a Faction.")
             elif not sub_factions_selected:
-                st.error("❌ Both players must select an Allegiance, Faction and Subfaction.")
+                if system_name == "Warhammer 40,000 (11th)":
+                    st.error("❌ Both players must choose at least a primary First Detachment.")
+                else:
+                    st.error("❌ Both players must select a Sub-Faction.")
             else:
-                # 2. Assign Attacker / Defender
+                # Assign combat positions matching segmented controls
                 if attacking_player == "You":
                     attacker_id = st.session_state.user.id
                     defender_id = actual_p2_id
                 else:
                     attacker_id = actual_p2_id
                     defender_id = st.session_state.user.id
-                # 3. Assign Went First
+                    
                 if went_first == "You":
                     went_first_id = st.session_state.user.id
                 else:
                     went_first_id = actual_p2_id
 
-                # Lookup IDs
-                p1_row = p1_df_system_factions[p1_df_system_factions['subfaction'] == p1_sub].iloc[0]
-                p2_row = p2_df_system_factions[p2_df_system_factions['subfaction'] == p2_sub].iloc[0]
-
-                if system_name != "Kill Team":
-                    p1_op_count = None
-                    p2_op_count = None
-
-                # Store data for the next page
+                # Save finalized parameters into game_data wrapper
                 st.session_state.game_data = {
-                    "system_id": p1_row['system_id'],
+                    "system_id": system_id,
                     "p1_id": st.session_state.user.id,
                     "p1_name": p1_name,
                     "p1_all": p1_all,
                     "p1_fac": p1_fac,
-                    "p1_sub": p1_sub,
+                    "p1_sub": p1_sub,  # String fallback for 10th Ed
                     "p2_id": actual_p2_id,
                     "p2_name": p2_name,
-                    "p1_all": p1_all,
+                    "p2_all": p2_all,
                     "p2_fac": p2_fac,
-                    "p2_sub": p2_sub,
-                    "p1_fac_id": p1_row['faction_id'],
-                    "p2_fac_id": p2_row['faction_id'],
-                    "p1_op_count": p1_op_count,
-                    "p2_op_count": p2_op_count,
+                    "p2_sub": p2_sub,  # String fallback for 10th Ed
+                    "p1_fac_id": str(p1_fac_id) if p1_fac_id else None,
+                    "p2_fac_id": str(p2_fac_id) if p2_fac_id else None,
                     "attacker_id": attacker_id,
                     "defender_id": defender_id,
                     "went_first_id": went_first_id,
                     "game_size": game_size,
+                    # Pass the 11th edition tracking tokens safely
                     "p1_sub_1": p1_sub_1,
                     "p1_sub_2": p1_sub_2,
                     "p1_sub_3": p1_sub_3,
