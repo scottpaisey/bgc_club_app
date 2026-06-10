@@ -493,30 +493,6 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                                       placeholder="Choose...", key="p2_sub_sel")
             else:
                 p2_sub = st.selectbox("Opponents Sub-Faction", [], disabled=True)
-
-        elif system_name == "Warhammer 40,000 (11th)":
-            # 2. Opponent Faction Dropdown
-            if p2_all:
-                p2_fac_df = p2_all_df[p2_all_df['allegiance'] == p2_all]
-                p2_fac = st.selectbox("Opponent's Faction", p2_fac_df['faction'].unique(), index=None,
-                                      placeholder="Choose...", key="p2_fac_sel")
-            else:
-                p2_fac = st.selectbox("Opponent's Faction", [], disabled=True)
-                
-            # =========================================================================
-            # OPPONENT 11TH EDITION MULTI-DETACHMENT CASCADE LOGIC
-            # =========================================================================
-            p2_sub_1, p2_sub_2, p2_sub_3 = None, None, None
-            
-        elif system_name == "Warhammer 40,000 (11th)":
-            if p2_all:
-                p2_fac_df = p2_all_df[p2_all_df['allegiance'] == p2_all]
-                p2_fac = st.selectbox("Opponent's Faction", p2_fac_df['faction'].unique(), index=None,
-                                      placeholder="Choose...", key="p2_fac_sel")
-            else:
-                p2_fac = st.selectbox("Opponent's Faction", [], disabled=True)
-                
-            p2_sub_1, p2_sub_2, p2_sub_3 = None, None, None
             
         elif system_name == "Warhammer 40,000 (11th)":
             # 2. Opponent Faction Dropdown
