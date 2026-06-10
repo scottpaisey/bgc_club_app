@@ -345,10 +345,18 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                         if total_dp_used <= dp_cap and not keyword_clash:
                             st.success(f"✅ **Army Composition Validated:** {total_dp_used}/{dp_cap} DP utilized. Formations are combat-ready!")
                             
-                            # FIX: Explicitly check against None to avoid the ambiguous Pandas truth check
-                            p1_sub_1 = d1_row['id'] if d1_row is not None else None
-                            p1_sub_2 = d2_row['id'] if d2_row is not None else None
-                            p1_sub_3 = d3_row['id'] if d3_row is not None else None
+                            # FIX: Use a custom helper function to safely extract the 'id' string from the Series
+                            def get_safe_id(row_obj):
+                                if row_obj is None:
+                                    return None
+                                if isinstance(row_obj, pd.Series) and 'id' in row_obj.index:
+                                    val = row_obj['id']
+                                    return str(val) if pd.notna(val) else None
+                                return None
+
+                            p1_sub_1 = get_safe_id(d1_row)
+                            p1_sub_2 = get_safe_id(d2_row)
+                            p1_sub_3 = get_safe_id(d3_row)
 
                 else:
                     st.info("ℹ️ No multi-detachments compiled for this faction within the system ledger yet.")
@@ -553,10 +561,19 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                         if p2_total_dp_used <= dp_cap and not p2_keyword_clash:
                             st.success(f"✅ **Opponent Army Composition Validated:** {p2_total_dp_used}/{dp_cap} DP utilised. Formations are combat-ready!")
                             
-                            # IMPROVEMENT: Explicitly check 'is not None' to eliminate the Pandas ambiguous truth check crash
-                            p2_sub_1 = opp_d1_row['id'] if opp_d1_row is not None else None
-                            p2_sub_2 = opp_d2_row['id'] if opp_d2_row is not None else None
-                            p2_sub_3 = opp_d3_row['id'] if opp_d3_row is not None else None
+                            # FIX: Use the same helper block to safely parse the opponent's rows
+                            def get_safe_id(row_obj):
+                                if row_obj is None:
+                                    return None
+                                if isinstance(row_obj, pd.Series) and 'id' in row_obj.index:
+                                    val = row_obj['id']
+                                    return str(val) if pd.notna(val) else None
+                                return None
+
+                            p2_sub_1 = get_safe_id(opp_d1_row)
+                            p2_sub_2 = get_safe_id(opp_d2_row)
+                            p2_sub_3 = get_safe_id(opp_d3_row)
+
                 else:
                     st.info("ℹ️ No multi-detachments compiled for this opponent faction within the system ledger yet.")
             else:
