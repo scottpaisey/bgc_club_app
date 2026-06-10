@@ -296,9 +296,14 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                 faction_dets = p1_df_detatchment[p1_df_detatchment['faction_id'] == p1_fac_id].copy()
                 
                 if not faction_dets.empty:
-                    # Create a clear string display label mapping helper for selectboxes
-                    faction_dets['display_label'] = faction_dets['subfaction'] + " (" + faction_dets['dp_cost'].astype(str) + " DP)"
-                    label_to_row = {row['display_label']: row for _, row in faction_dets.iterrows()}
+                    # FIX: Convert the DataFrame rows into clean, native Python dictionaries immediately
+                    faction_dets_list = faction_dets.to_dict(orient="records")
+                    
+                    # Create a clear string display label mapping using native dictionaries
+                    label_to_row = {}
+                    for row in faction_dets_list:
+                        label = f"{row['subfaction']} ({row['dp_cost']} DP)"
+                        label_to_row[label] = row
                     
                     # Establish point cap metrics based on game size
                     dp_cap = 3 if game_size == "Strike Force" else 2
@@ -308,7 +313,7 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                     p1_sub_1_label = st.selectbox("Your First Detachment*", [None] + d1_options, index=0, key="p1_sub_sel_1")
                     d1_row = label_to_row.get(p1_sub_1_label)
                     
-                    # --- Helper Function to filter options for Next Slots ---
+                    # --- Helper Function: Evaluates clean native dictionaries safely ---
                     def get_valid_next_options(chosen_rows):
                         current_dp = sum(r['dp_cost'] for r in chosen_rows)
                         remaining_dp = dp_cap - current_dp
@@ -321,7 +326,7 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                         
                         valid_labels = []
                         for label, row in label_to_row.items():
-                            # Rule 1: Skip if already selected
+                            # Rule 1: Skip if already selected (Safe native dict lookup)
                             if any(row['id'] == c['id'] for c in chosen_rows):
                                 continue
                             # Rule 2: Skip if it exceeds remaining DP space
@@ -351,7 +356,11 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                     
                     # Gather validated entries
                     selected_rows = [r for r in [d1_row, d2_row, d3_row] if r is not None]
-
+                    
+                    # Output state assignments to pass forward
+                    p1_sub_1 = d1_row['id'] if d1_row is not None else None
+                    p1_sub_2 = d2_row['id'] if d2_row is not None else None
+                    p1_sub_3 = d3_row['id'] if d3_row is not None else None
                     
                     # -------------------------------------------------------------
                     # 11TH EDITION RULE VALIDATION ENGINE
@@ -545,10 +554,14 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                 
                 # Filter down the master detachment table to options matching the opponent's army
                 p2_faction_dets = p2_df_detatchment[p2_df_detatchment['faction_id'] == p2_fac_id].copy()
-                
-                if not p2_faction_dets.empty:
-                    p2_faction_dets['display_label'] = p2_faction_dets['subfaction'] + " (" + p2_faction_dets['dp_cost'].astype(str) + " DP)"
-                    p2_label_to_row = {row['display_label']: row for _, row in p2_faction_dets.iterrows()}
+                                if not p2_faction_dets.empty:
+                    # FIX: Convert opponent DataFrame rows into clean, native Python dictionaries immediately
+                    p2_faction_dets_list = p2_faction_dets.to_dict(orient="records")
+                    
+                    p2_label_to_row = {}
+                    for row in p2_faction_dets_list:
+                        label = f"{row['subfaction']} ({row['dp_cost']} DP)"
+                        p2_label_to_row[label] = row
                     
                     dp_cap = 3 if game_size == "Strike Force" else 2
                     
@@ -595,8 +608,12 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                     opp_d3_row = p2_label_to_row.get(p2_sub_3_label)
                     
                     p2_selected_rows = [r for r in [opp_d1_row, opp_d2_row, opp_d3_row] if r is not None]
-
                     
+                    # Output state assignments to pass forward
+                    p2_sub_1 = opp_d1_row['id'] if opp_d1_row is not None else None
+                    p2_sub_2 = opp_d2_row['id'] if opp_d2_row is not None else None
+                    p2_sub_3 = opp_d3_row['id'] if opp_d3_row is not None else None
+                                    
                     # -------------------------------------------------------------
                     # OPPONENT 11TH EDITION RULE VALIDATION ENGINE
                     # -------------------------------------------------------------
