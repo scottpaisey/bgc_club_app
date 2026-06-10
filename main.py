@@ -554,7 +554,8 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                 
                 # Filter down the master detachment table to options matching the opponent's army
                 p2_faction_dets = p2_df_detatchment[p2_df_detatchment['faction_id'] == p2_fac_id].copy()
-                                if not p2_faction_dets.empty:
+                
+                if not p2_faction_dets.empty:
                     # FIX: Convert opponent DataFrame rows into clean, native Python dictionaries immediately
                     p2_faction_dets_list = p2_faction_dets.to_dict(orient="records")
                     
