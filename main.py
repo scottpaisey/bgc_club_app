@@ -618,11 +618,11 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
 
             # --- SYSTEM-AWARE SUBFACTION / DETACHMENT VALIDATION ENGINE ---
             if system_name == "Warhammer 40,000 (11th)":
-                # 🎯 FIX: Fetch selections directly from st.session_state widgets using get_safe_id layout logic
+                # 🎯 FIX: Read 'detachment_id' from the newly updated database view schema layout
                 def check_state_id(label_key, dictionary_map):
                     chosen_label = st.session_state.get(label_key)
                     if chosen_label and chosen_label in dictionary_map:
-                        return dictionary_map[chosen_label]['id']
+                        return dictionary_map[chosen_label]['detachment_id']
                     return None
 
                 # Extracting active IDs using your verified dictionary maps
@@ -634,9 +634,10 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                 p2_sub_2 = check_state_id("p2_sub_sel_2", p2_label_to_row)
                 p2_sub_3 = check_state_id("p2_sub_sel_3", p2_label_to_row)
 
-                # Now this evaluation will successfully pass!
+                # Ranks validation
                 sub_factions_selected = (p1_sub_1 is not None) and (p2_sub_1 is not None)
                 p1_sub, p2_sub = None, None
+
             else:
                 # 10th Ed uses your standard fallback strings
                 sub_factions_selected = p1_sub and p2_sub
