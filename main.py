@@ -332,9 +332,10 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                         # Rule B: Keyword Overlap Verification
                         seen_keywords = []
                         keyword_clash = False
-                        
+                                                
                         for r in selected_rows:
-                            if r.get('keywords'): # Checking if keywords list array exists
+                            # FIX: Explicitly check that keywords exists, is not None, and is a list/iterable (not NaN float)
+                            if r.get('keywords') and isinstance(r['keywords'], (list, set, tuple)):
                                 overlap = set(seen_keywords).intersection(set(r['keywords']))
                                 if overlap:
                                     keyword_clash = True
