@@ -519,6 +519,7 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
             p2_sub_1, p2_sub_2, p2_sub_3 = None, None, None
             
         elif system_name == "Warhammer 40,000 (11th)":
+            # 2. Opponent Faction Dropdown
             if p2_all:
                 p2_fac_df = p2_all_df[p2_all_df['allegiance'] == p2_all]
                 p2_fac = st.selectbox("Opponent's Faction", p2_fac_df['faction'].unique(), index=None,
@@ -526,86 +527,94 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
             else:
                 p2_fac = st.selectbox("Opponent's Faction", [], disabled=True)
                 
+            # =========================================================================
+            # OPPONENT 11TH EDITION MULTI-DETACHMENT CASCADE LOGIC
+            # =========================================================================
             p2_sub_1, p2_sub_2, p2_sub_3 = None, None, None
             
             if p2_fac and not p2_df_detatchment.empty:
-                # 1. Safely locate rows matching your opponent's faction selection
+                # 1. Safely locate the row inside your filtered dataframe
                 matched_p2_faction_rows = p2_fac_df[p2_fac_df['faction'] == p2_fac]
                 
-                if not matched_p2_faction_rows.empty:
-                    # FIX: Use integer positional index [0] before reading the column label string
-                    p2_fac_id = str(matched_p2_faction_rows.iloc[0]['faction_id'])
+                # FIX: Perfect mirror of P1 extracting position [0] safely
+                p2_fac_id = str(matched_p2_faction_rows.iloc[0]['faction_id'])
+                
+                # 2. Filter your p2_df_detatchment (built from view system_factions_11th)
+                p2_faction_dets = p2_df_detatchment[p2_df_detatchment['faction_id'] == p2_fac_id].copy()
+                
+                if not p2_faction_dets.empty:
+                    # Convert the view rows into clean, native Python dictionaries immediately
+                    p2_faction_dets_list = p2_faction_dets.to_dict(orient="records")
                     
-                    # 2. Filter down the master view using the clean opponent faction ID string
-                    p2_faction_dets = p2_df_detatchment[p2_df_detatchment['faction_id'] == p2_fac_id].copy()
+                    # Map display labels using 'subfaction' matching your view layout
+                    p2_label_to_row = {}
+                    for row in p2_faction_dets_list:
+                        label = f"{row['subfaction']} ({row['dp_cost']} DP)"
+                        p2_label_to_row[label] = row
                     
-                    if not p2_faction_dets.empty:
-                        p2_faction_dets_list = p2_faction_dets.to_dict(orient="records")
+                    # Establish point cap metrics based on game size
+                    dp_cap = 3 if game_size == "Strike Force" else 2
+                    
+                    # --- Dropdown 1: All available options ---
+                    opp_d1_options = list(p2_label_to_row.keys())
+                    p2_sub_1_label = st.selectbox("Opponent's First Detachment*", [None] + opp_d1_options, index=0, key="p2_sub_sel_1")
+                    opp_d1_row = p2_label_to_row.get(p2_sub_1_label)
+                    
+                    # --- Helper Function: Evaluates opponent clean native dictionaries safely ---
+                    def get_p2_valid_next_options(chosen_rows):
+                        active_choices = [c for c in chosen_rows if c is not None and isinstance(c, dict)]
                         
-                        p2_label_to_row = {}
-                        for row in p2_faction_dets_list:
-                            label = f"{row['subfaction']} ({row['dp_cost']} DP)"
-                            p2_label_to_row[label] = row
+                        current_dp = sum(r['dp_cost'] for r in active_choices)
+                        remaining_dp = dp_cap - current_dp
                         
-                        dp_cap = 3 if game_size == "Strike Force" else 2
+                        used_keywords = []
+                        for r in active_choices:
+                            if r.get('keywords') and isinstance(r['keywords'], (list, set, tuple)):
+                                used_keywords.extend(r['keywords'])
                         
-                        # --- Opponent Dropdown 1 ---
-                        opp_d1_options = list(p2_label_to_row.keys())
-                        p2_sub_1_label = st.selectbox("Opponent's First Detachment*", [None] + opp_d1_options, index=0, key="p2_sub_sel_1")
-                        opp_d1_row = p2_label_to_row.get(p2_sub_1_label)
-                        
-                        # --- Opponent Filter Function ---
-                        def get_p2_valid_next_options(chosen_rows):
-                            active_p2_choices = [c for c in chosen_rows if c is not None and isinstance(c, dict)]
-                            
-                            current_dp = sum(r['dp_cost'] for r in active_p2_choices)
-                            remaining_dp = dp_cap - current_dp
-                            
-                            p2_used_keywords = []
-                            for r in active_p2_choices:
-                                if r.get('keywords') and isinstance(r['keywords'], (list, set, tuple)):
-                                    p2_used_keywords.extend(r['keywords'])
-                            
-                            valid_labels = []
-                            for label, row in p2_label_to_row.items():
-                                if any(row['subfaction'] == c['subfaction'] for c in active_p2_choices if 'subfaction' in c):
+                        valid_labels = []
+                        for label, row in p2_label_to_row.items():
+                            # Rule 1: Skip if already selected inside opponent choice pool
+                            if any(row['subfaction'] == c['subfaction'] for c in active_choices if 'subfaction' in c):
+                                continue
+                            # Rule 2: Skip if it exceeds remaining DP space
+                            if row['dp_cost'] > remaining_dp:
+                                continue
+                            # Rule 3: Skip if it shares any locked keywords
+                            if row.get('keywords') and isinstance(row['keywords'], (list, set, tuple)):
+                                if set(used_keywords).intersection(set(row['keywords'])):
                                     continue
-                                if row['dp_cost'] > remaining_dp:
-                                    continue
-                                if row.get('keywords') and isinstance(row['keywords'], (list, set, tuple)):
-                                    if set(p2_used_keywords).intersection(set(row['keywords'])):
-                                        continue
-                                        
-                                valid_labels.append(label)
-                            return valid_labels
+                                    
+                            valid_labels.append(label)
+                        return valid_labels
 
-                        # --- Opponent Dropdown 2 ---
-                        p2_dets_for_d2 = [opp_d1_row] if opp_d1_row is not None else []
-                        opp_d2_options = get_p2_valid_next_options(p2_dets_for_d2) if opp_d1_row is not None else []
-                        
-                        p2_sub_2_label = st.selectbox("Opponent's Second Detachment (Optional)", [None] + opp_d2_options, index=0, key="p2_sub_sel_2", disabled=not opp_d2_options or not p2_sub_1_label)
-                        opp_d2_row = p2_label_to_row.get(p2_sub_2_label)
-                        
-                        # --- Opponent Dropdown 3 ---
-                        p2_dets_for_d3 = [r for r in [opp_d1_row, opp_d2_row] if r is not None]
-                        opp_d3_options = get_p2_valid_next_options(p2_dets_for_d3) if opp_d2_row is not None else []
-                        
-                        p2_sub_3_label = st.selectbox("Opponent's Third Detachment (Optional)", [None] + opp_d3_options, index=0, key="p2_sub_sel_3", disabled=not opp_d3_options or not p2_sub_2_label)
-                        opp_d3_row = p2_label_to_row.get(p2_sub_3_label)
-                        
-                        p2_selected_rows = [r for r in [opp_d1_row, opp_d2_row, opp_d3_row] if r is not None]
-                        
-                        p2_sub_1 = opp_d1_row['id'] if (opp_d1_row is not None and 'id' in opp_d1_row) else None
-                        p2_sub_2 = opp_d2_row['id'] if (opp_d2_row is not None and 'id' in opp_d2_row) else None
-                        p2_sub_3 = opp_d3_row['id'] if (opp_d3_row is not None and 'id' in opp_d3_row) else None
-                    else:
-                        st.info("ℹ️ No multi-detachments compiled for this opponent faction within the system ledger yet.")
+                    # --- Dropdown 2 (Filters based on Opponent Dropdown 1 choices) ---
+                    p2_dets_for_d2 = [opp_d1_row] if opp_d1_row is not None else []
+                    opp_d2_options = get_p2_valid_next_options(p2_dets_for_d2) if opp_d1_row is not None else []
+                    
+                    p2_sub_2_label = st.selectbox("Opponent's Second Detachment (Optional)", [None] + opp_d2_options, index=0, key="p2_sub_sel_2", disabled=not opp_d2_options or not p2_sub_1_label)
+                    opp_d2_row = p2_label_to_row.get(p2_sub_2_label)
+                    
+                    # --- Dropdown 3 (Filters based on Opponent Dropdown 1 & 2 choices) ---
+                    p2_dets_for_d3 = [r for r in [opp_d1_row, opp_d2_row] if r is not None]
+                    opp_d3_options = get_p2_valid_next_options(p2_dets_for_d3) if opp_d2_row is not None else []
+                    
+                    p2_sub_3_label = st.selectbox("Opponent's Third Detachment (Optional)", [None] + opp_d3_options, index=0, key="p2_sub_sel_3", disabled=not opp_d3_options or not p2_sub_2_label)
+                    opp_d3_row = p2_label_to_row.get(p2_sub_3_label)
+                    
+                    p2_selected_rows = [r for r in [opp_d1_row, opp_d2_row, opp_d3_row] if r is not None]
+                    
+                    # Extract row['id'] using safe lookup constraints
+                    p2_sub_1 = opp_d1_row['id'] if (opp_d1_row is not None and 'id' in opp_d1_row) else None
+                    p2_sub_2 = opp_d2_row['id'] if (opp_d2_row is not None and 'id' in opp_d2_row) else None
+                    p2_sub_3 = opp_d3_row['id'] if (opp_d3_row is not None and 'id' in opp_d3_row) else None
                 else:
-                    st.error("❌ Opponent faction mapping failed to match a valid database identifier row.")
+                    st.info("ℹ️ No multi-detachments compiled for this opponent faction within the system ledger yet.")
             else:
                 st.selectbox("Opponent's First Detachment", [], disabled=True, key="p2_sub_sel_1_dis")
                 st.selectbox("Opponent's Second Detachment", [], disabled=True, key="p2_sub_sel_2_dis")
                 st.selectbox("Opponent's Third Detachment", [], disabled=True, key="p2_sub_sel_3_dis")
+
 
         attacker_id = None
         defender_id = None
