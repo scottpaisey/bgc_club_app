@@ -779,8 +779,9 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                 with col3:
                     st.subheader(f"{p1_name}")
                     if system_name != "Middle Earth: Strategy Battle Game":
-                        st.write(f"**{p1_fac}**")
-                    st.write(f"{p1_sub}")
+                        st.write(f"**{p1_fac}**")                
+                    if system_name != "Warhammer 40,000 (11th)":
+                        st.write(f"{p1_sub}")
 
                     if system_name == 'Warhammer 40,000':
                         p1_pri = st.number_input("Primary Score*", 0, 45, key="p1_p")
