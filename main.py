@@ -604,6 +604,7 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
             "Who is the attacker?", options, selection_mode="single", key="attacking_player"
         )
 
+        # --- SUBMISSION VALIDATION ENGINE ---
         if st.button("Proceed to Scoring"):
             names_entered = p1_name and p2_name
             
@@ -611,17 +612,33 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
             if system_name != "Middle Earth: Strategy Battle Game":
                 factions_selected = p1_fac and p2_fac
             else:
-                factions_selected = True  # MESBG doesn't use standard faction dropdown arrays
+                factions_selected = True  
                 p1_fac_id = None
                 p2_fac_id = None
 
             # --- SYSTEM-AWARE SUBFACTION / DETACHMENT VALIDATION ENGINE ---
             if system_name == "Warhammer 40,000 (11th)":
-                # FIX: 11th Ed only requires the primary First Detachment slot to be filled for both sides
+                # 🎯 FIX: Fetch selections directly from st.session_state widgets using get_safe_id layout logic
+                def check_state_id(label_key, dictionary_map):
+                    chosen_label = st.session_state.get(label_key)
+                    if chosen_label and chosen_label in dictionary_map:
+                        return dictionary_map[chosen_label]['id']
+                    return None
+
+                # Extracting active IDs using your verified dictionary maps
+                p1_sub_1 = check_state_id("p1_sub_sel_1", label_to_row)
+                p1_sub_2 = check_state_id("p1_sub_sel_2", label_to_row)
+                p1_sub_3 = check_state_id("p1_sub_sel_3", label_to_row)
+                
+                p2_sub_1 = check_state_id("p2_sub_sel_1", p2_label_to_row)
+                p2_sub_2 = check_state_id("p2_sub_sel_2", p2_label_to_row)
+                p2_sub_3 = check_state_id("p2_sub_sel_3", p2_label_to_row)
+
+                # Now this evaluation will successfully pass!
                 sub_factions_selected = (p1_sub_1 is not None) and (p2_sub_1 is not None)
                 p1_sub, p2_sub = None, None
             else:
-                # 10th Ed / other systems use the singular p1_sub fallback string check
+                # 10th Ed uses your standard fallback strings
                 sub_factions_selected = p1_sub and p2_sub
                 p1_sub_1, p1_sub_2, p1_sub_3 = None, None, None
                 p2_sub_1, p2_sub_2, p2_sub_3 = None, None, None
@@ -658,19 +675,18 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                     "p1_name": p1_name,
                     "p1_all": p1_all,
                     "p1_fac": p1_fac,
-                    "p1_sub": p1_sub,  # String fallback for 10th Ed
+                    "p1_sub": p1_sub,  
                     "p2_id": actual_p2_id,
                     "p2_name": p2_name,
                     "p2_all": p2_all,
                     "p2_fac": p2_fac,
-                    "p2_sub": p2_sub,  # String fallback for 10th Ed
+                    "p2_sub": p2_sub,  
                     "p1_fac_id": str(p1_fac_id) if p1_fac_id else None,
                     "p2_fac_id": str(p2_fac_id) if p2_fac_id else None,
                     "attacker_id": attacker_id,
                     "defender_id": defender_id,
                     "went_first_id": went_first_id,
                     "game_size": game_size,
-                    # Pass the 11th edition tracking tokens safely
                     "p1_sub_1": p1_sub_1,
                     "p1_sub_2": p1_sub_2,
                     "p1_sub_3": p1_sub_3,
