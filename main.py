@@ -288,18 +288,20 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
             p1_sub_1, p1_sub_2, p1_sub_3 = None, None, None
             
             if p1_fac and not p1_df_detatchment.empty:
-                # Find the main faction_id from your master rows
+                # 1. Safely locate the row inside your filtered dataframe
                 matched_faction_rows = p1_fac_df[p1_fac_df['faction'] == p1_fac]
-                p1_fac_id = matched_faction_rows.iloc[0]['faction_id']
                 
-                # Filter down the master detachment table to options matching this specific army
+                # FIX: View uses 'faction_id' (f.id). Extract it safely as a clean string.
+                p1_fac_id = str(matched_faction_rows.iloc[0]['faction_id'])
+                
+                # 2. Filter your p1_df_detatchment (which is built from the view system_factions_11th)
                 faction_dets = p1_df_detatchment[p1_df_detatchment['faction_id'] == p1_fac_id].copy()
                 
                 if not faction_dets.empty:
-                    # FIX: Convert the DataFrame rows into clean, native Python dictionaries immediately
+                    # Convert the view rows into clean, native Python dictionaries immediately
                     faction_dets_list = faction_dets.to_dict(orient="records")
                     
-                    # Create a clear string display label mapping using native dictionaries
+                    # FIX: Correctly map display labels using 'subfaction' matching your view layout!
                     label_to_row = {}
                     for row in faction_dets_list:
                         label = f"{row['subfaction']} ({row['dp_cost']} DP)"
@@ -315,13 +317,11 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                     
                     # --- Helper Function: Evaluates clean native dictionaries safely ---
                     def get_valid_next_options(chosen_rows):
-                        # Filter out any None values from the chosen rows array first
-                        active_choices = [c for c in chosen_rows if c is not None]
+                        active_choices = [c for c in chosen_rows if c is not None and isinstance(c, dict)]
                         
                         current_dp = sum(r['dp_cost'] for r in active_choices)
                         remaining_dp = dp_cap - current_dp
                         
-                        # Collect all keywords currently locked in
                         used_keywords = []
                         for r in active_choices:
                             if r.get('keywords') and isinstance(r['keywords'], (list, set, tuple)):
@@ -329,8 +329,8 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                         
                         valid_labels = []
                         for label, row in label_to_row.items():
-                            # Rule 1: Skip if already selected (FIXED: Added safety filter checking against active_choices)
-                            if any(row['id'] == c['id'] for c in active_choices):
+                            # Rule 1: Skip if already selected (FIXED: View has an 'id' column from d.id or similar. If not, we match by subfaction name text)
+                            if any(row['subfaction'] == c['subfaction'] for c in active_choices if 'subfaction' in c):
                                 continue
                             # Rule 2: Skip if it exceeds remaining DP space
                             if row['dp_cost'] > remaining_dp:
@@ -357,56 +357,15 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                     p1_sub_3_label = st.selectbox("Your Third Detachment (Optional)", [None] + d3_options, index=0, key="p1_sub_sel_3", disabled=not d3_options or not p1_sub_2_label)
                     d3_row = label_to_row.get(p1_sub_3_label)
                     
-                    # Gather validated entries
                     selected_rows = [r for r in [d1_row, d2_row, d3_row] if r is not None]
                     
-                    # Output state assignments to pass forward
-                    p1_sub_1 = d1_row['id'] if d1_row is not None else None
-                    p1_sub_2 = d2_row['id'] if d2_row is not None else None
-                    p1_sub_3 = d3_row['id'] if d3_row is not None else None
-                    
-                    # -------------------------------------------------------------
-                    # 11TH EDITION RULE VALIDATION ENGINE
-                    # -------------------------------------------------------------
-                    if selected_rows:
-                        # Rule A: Detachment Point (DP) Cap Verification
-                        dp_cap = 3 if game_size == "Strike Force" else 2
-                        total_dp_used = sum(r['dp_cost'] for r in selected_rows)
-                        
-                        if total_dp_used > dp_cap:
-                            st.error(f"❌ **Illegal Detachment Roster:** Total cost is {total_dp_used} DP! Maximum allowed for {game_size or 'this game size'} is {dp_cap} DP.")
-                        
-                        # Rule B: Keyword Overlap Verification
-                        seen_keywords = []
-                        keyword_clash = False
-                                                
-                        for r in selected_rows:
-                            # FIX: Explicitly check that keywords exists, is not None, and is a list/iterable (not NaN float)
-                            if r.get('keywords') and isinstance(r['keywords'], (list, set, tuple)):
-                                overlap = set(seen_keywords).intersection(set(r['keywords']))
-                                if overlap:
-                                    keyword_clash = True
-                                    st.error(f"❌ **Illegal Composition:** Overlapping faction keywords found: {list(overlap)}. Selected detachments cannot share keywords.")
-                                seen_keywords.extend(r['keywords'])
-                        
-                        if total_dp_used <= dp_cap and not keyword_clash:
-                            st.success(f"✅ **Army Composition Validated:** {total_dp_used}/{dp_cap} DP utilized. Formations are combat-ready!")
-                            
-                            # FIX: Use a custom helper function to safely extract the 'id' string from the Series
-                            def get_safe_id(row_obj):
-                                if row_obj is None:
-                                    return None
-                                if isinstance(row_obj, pd.Series) and 'id' in row_obj.index:
-                                    val = row_obj['id']
-                                    return str(val) if pd.notna(val) else None
-                                return None
-
-                            p1_sub_1 = get_safe_id(d1_row)
-                            p1_sub_2 = get_safe_id(d2_row)
-                            p1_sub_3 = get_safe_id(d3_row)
-
+                    # FIX: Extract row['id'] using standard safe lookup constraints
+                    p1_sub_1 = d1_row['id'] if (d1_row is not None and 'id' in d1_row) else None
+                    p1_sub_2 = d2_row['id'] if (d2_row is not None and 'id' in d2_row) else None
+                    p1_sub_3 = d3_row['id'] if (d3_row is not None and 'id' in d3_row) else None
                 else:
                     st.info("ℹ️ No multi-detachments compiled for this faction within the system ledger yet.")
+
             else:
                 st.selectbox("Your First Detachment", [], disabled=True)
                 st.selectbox("Your Second Detachment", [], disabled=True)
@@ -550,18 +509,26 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
             # =========================================================================
             p2_sub_1, p2_sub_2, p2_sub_3 = None, None, None
             
-            if p2_fac and not p2_df_detatchment.empty:
-                # Find the main faction_id from your master rows for the opponent
-                matched_p2_faction_rows = p2_fac_df[p2_fac_df['faction'] == p2_fac]
-                p2_fac_id = matched_p2_faction_rows.iloc[0]['faction_id']
+        elif system_name == "Warhammer 40,000 (11th)":
+            if p2_all:
+                p2_fac_df = p2_all_df[p2_all_df['allegiance'] == p2_all]
+                p2_fac = st.selectbox("Opponent's Faction", p2_fac_df['faction'].unique(), index=None,
+                                      placeholder="Choose...", key="p2_fac_sel")
+            else:
+                p2_fac = st.selectbox("Opponent's Faction", [], disabled=True)
                 
-                # Filter down the master detachment table to options matching the opponent's army
+            p2_sub_1, p2_sub_2, p2_sub_3 = None, None, None
+            
+            if p2_fac and not p2_df_detatchment.empty:
+                matched_p2_faction_rows = p2_fac_df[p2_fac_df['faction'] == p2_fac]
+                p2_fac_id = str(matched_p2_faction_rows.iloc[0]['faction_id'])
+                
                 p2_faction_dets = p2_df_detatchment[p2_df_detatchment['faction_id'] == p2_fac_id].copy()
                 
                 if not p2_faction_dets.empty:
-                    # FIX: Convert opponent DataFrame rows into clean, native Python dictionaries immediately
                     p2_faction_dets_list = p2_faction_dets.to_dict(orient="records")
                     
+                    # FIX: Correctly map opponent labels using 'subfaction' matching your view layout!
                     p2_label_to_row = {}
                     for row in p2_faction_dets_list:
                         label = f"{row['subfaction']} ({row['dp_cost']} DP)"
@@ -576,8 +543,7 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                     
                     # --- Opponent Filter Function ---
                     def get_p2_valid_next_options(chosen_rows):
-                        # Filter out any None values from the opponent chosen rows array first
-                        active_p2_choices = [c for c in chosen_rows if c is not None]
+                        active_p2_choices = [c for c in chosen_rows if c is not None and isinstance(c, dict)]
                         
                         current_dp = sum(r['dp_cost'] for r in active_p2_choices)
                         remaining_dp = dp_cap - current_dp
@@ -589,8 +555,7 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                         
                         valid_labels = []
                         for label, row in p2_label_to_row.items():
-                            # FIXED: Added safety filter checking against active_p2_choices
-                            if any(row['id'] == c['id'] for c in active_p2_choices):
+                            if any(row['subfaction'] == c['subfaction'] for c in active_p2_choices if 'subfaction' in c):
                                 continue
                             if row['dp_cost'] > remaining_dp:
                                 continue
@@ -600,7 +565,6 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                                     
                             valid_labels.append(label)
                         return valid_labels
-
 
                     # --- Opponent Dropdown 2 ---
                     p2_dets_for_d2 = [opp_d1_row] if opp_d1_row is not None else []
@@ -618,53 +582,10 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                     
                     p2_selected_rows = [r for r in [opp_d1_row, opp_d2_row, opp_d3_row] if r is not None]
                     
-                    # Output state assignments to pass forward
-                    p2_sub_1 = opp_d1_row['id'] if opp_d1_row is not None else None
-                    p2_sub_2 = opp_d2_row['id'] if opp_d2_row is not None else None
-                    p2_sub_3 = opp_d3_row['id'] if opp_d3_row is not None else None
-                                    
-                    # -------------------------------------------------------------
-                    # OPPONENT 11TH EDITION RULE VALIDATION ENGINE
-                    # -------------------------------------------------------------
-                    if p2_selected_rows:
-                        # Rule A: Detachment Point (DP) Cap Verification
-                        dp_cap = 3 if game_size == "Strike Force" else 2
-                        p2_total_dp_used = sum(r['dp_cost'] for r in p2_selected_rows)
-                        
-                        if p2_total_dp_used > dp_cap:
-                            st.error(f"❌ **Illegal Opponent Detachment Roster:** Total cost is {p2_total_dp_used} DP! Maximum allowed for {game_size or 'this game size'} is {dp_cap} DP.")
-                        
-                        # Rule B: Keyword Overlap Verification
-                        p2_seen_keywords = []
-                        p2_keyword_clash = False
-                        
-                        for r in p2_selected_rows:
-                            # IMPROVEMENT: Add type checking safety to handle empty cells / NaN float elements
-                            if r.get('keywords') and isinstance(r['keywords'], (list, set, tuple)):
-                                p2_overlap = set(p2_seen_keywords).intersection(set(r['keywords']))
-                                if p2_overlap:
-                                    p2_keyword_clash = True
-                                    st.error(f"❌ **Illegal Opponent Composition:** Overlapping faction keywords found: {list(p2_overlap)}. Selected detachments cannot share keywords.")
-                                p2_seen_keywords.extend(r['keywords'])
-                        
-                        if p2_total_dp_used <= dp_cap and not p2_keyword_clash:
-                            st.success(f"✅ **Opponent Army Composition Validated:** {p2_total_dp_used}/{dp_cap} DP utilised. Formations are combat-ready!")
-                            
-                            # FIX: Use the same helper block to safely parse the opponent's rows
-                            def get_safe_id(row_obj):
-                                if row_obj is None:
-                                    return None
-                                if isinstance(row_obj, pd.Series) and 'id' in row_obj.index:
-                                    val = row_obj['id']
-                                    return str(val) if pd.notna(val) else None
-                                return None
+                    p2_sub_1 = opp_d1_row['id'] if (opp_d1_row is not None and 'id' in opp_d1_row) else None
+                    p2_sub_2 = opp_d2_row['id'] if (opp_d2_row is not None and 'id' in opp_d2_row) else None
+                    p2_sub_3 = opp_d3_row['id'] if (opp_d3_row is not None and 'id' in opp_d3_row) else None
 
-                            p2_sub_1 = get_safe_id(opp_d1_row)
-                            p2_sub_2 = get_safe_id(opp_d2_row)
-                            p2_sub_3 = get_safe_id(opp_d3_row)
-
-                else:
-                    st.info("ℹ️ No multi-detachments compiled for this opponent faction within the system ledger yet.")
             else:
                 st.selectbox("Opponent's First Detachment", [], disabled=True, key="p2_sub_sel_1_dis")
                 st.selectbox("Opponent's Second Detachment", [], disabled=True, key="p2_sub_sel_2_dis")
