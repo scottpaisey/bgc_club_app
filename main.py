@@ -143,7 +143,6 @@ def show_login_screen():
 def log_game_details(page, system_name, system_id, system_short_name, event_id, round_id, mission_id, club_id):
     """Function for all system logging to reduce repeated code"""
     if st.session_state.page == page:
-        """Header"""
         st.header(system_name)
         st.divider()
         try:
@@ -298,7 +297,7 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                 
                 if not faction_dets.empty:
                     # Create a clear string display label mapping helper for selectboxes
-                    faction_dets['display_label'] = faction_dets['name'] + " (" + faction_dets['dp_cost'].astype(str) + " DP)"
+                    faction_dets['display_label'] = faction_dets['subfaction'] + " (" + faction_dets['dp_cost'].astype(str) + " DP)"
                     label_to_row = {row['display_label']: row for _, row in faction_dets.iterrows()}
                     
                     # --- Dropdown 1 ---
