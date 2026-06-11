@@ -948,17 +948,6 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                     f"Secondary Score: {scores['p1_sec']}",
                     f"Battle Ready: {scores['p1_br']}"
                 ])
-                
-                # Make sure to update Player 2's line compiler block right below it as well!
-                p2_lines.append([
-                    f"Faction: **{setup.get('p2_fac', 'Unknown')}**",
-                    f"Formation 1: {p2_d1_text}",
-                    f"Formation 2: {p2_d2_text}",
-                    f"Formation 3: {p2_d3_text}",
-                    f"Primary Score: {scores['p2_pri']}",
-                    f"Secondary Score: {scores['p2_sec']}",
-                    f"Battle Ready: {scores['p2_br']}"
-                ])
 
             elif system_name == "Middle Earth: Strategy Battle Game":
                 p1_lines.append([
@@ -989,13 +978,13 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                 ])
             elif system_name == "Warhammer 40,000 (11th)":
                 p2_lines.append([
-                    f"\n\nFaction: {setup['p2_fac']}"
-                    f"\n\n1 - Detatchment: {setup['p2_sub_sel_1_dis']}"
-                    f"\n\n2 - Detatchment: {setup['p2_sub_sel_2_dis']}"
-                    f"\n\n3 - Detatchment: {setup['p2_sub_sel_3_dis']}"
-                    f"\n\nPrimary: {scores['p2_pri']}"
-                    f"\n\nSecondary: {scores['p2_sec']}"
-                    f"\n\nBattle Ready: {scores['p2_br']}"
+                    f"Faction: **{setup.get('p2_fac', 'Unknown')}**",
+                    f"Formation 1: {p2_d1_text}",
+                    f"Formation 2: {p2_d2_text}",
+                    f"Formation 3: {p2_d3_text}",
+                    f"Primary Score: {scores['p2_pri']}",
+                    f"Secondary Score: {scores['p2_sec']}",
+                    f"Battle Ready: {scores['p2_br']}"
                 ])
 
             elif system_name == "Middle Earth: Strategy Battle Game":
