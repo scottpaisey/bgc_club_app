@@ -1001,8 +1001,15 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                     f"\n\nKill Op: {scores['p2_kill_grade']}"
                 ])
 
-            col_a.write(p1_lines)
-            col_b.write(p2_lines)
+            with col_a:
+                for line in p1_lines:
+                    st.write(line)
+            with col_b:
+                for line in p2_lines:
+                    st.write(line)
+
+            # col_a.write(p1_lines)
+            # col_b.write(p2_lines)
 
             c1, c2 = st.columns(2)
 
