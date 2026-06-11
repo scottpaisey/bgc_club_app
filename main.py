@@ -936,20 +936,20 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                 Battle Ready: **{scores['p1_br']}**
                 """
             elif system_name == "Warhammer 40,000 (11th)":
-                p1_d1_text = st.session_state.get("p1_sub_sel_1") or "None Chosen"
-                p1_d2_text = st.session_state.get("p1_sub_sel_2") or "None"
-                p1_d3_text = st.session_state.get("p1_sub_sel_3") or "None"
+                # p1_d1_text = st.session_state.get("p1_sub_sel_1") or "None Chosen"
+                # p1_d2_text = st.session_state.get("p1_sub_sel_2") or "None"
+                # p1_d3_text = st.session_state.get("p1_sub_sel_3") or "None"
                 
                 p1_markdown = f"""
                 Name: **{setup['p1_name']}**
                 
                 Faction: **{setup.get('p1_fac', 'Unknown')}**
                 
-                Formation 1: *{p1_d1_text}*
+                Formation 1: *{p1_sub_sel_1_dis}*
                 
-                Formation 2: *{p1_d2_text}*
+                Formation 2: *{p1_sub_sel_2_dis}*
                 
-                Formation 3: *{p1_d3_text}*
+                Formation 3: *{p1_sub_sel_3_dis}*
                 
                 Primary Score: **{scores['p1_pri']}**
                 
@@ -1000,20 +1000,20 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                 Battle Ready: **{scores['p2_br']}**
                 """
             elif system_name == "Warhammer 40,000 (11th)":
-                p2_d1_text = st.session_state.get("p2_sub_sel_1") or "None Chosen"
-                p2_d2_text = st.session_state.get("p2_sub_sel_2") or "None"
-                p2_d3_text = st.session_state.get("p2_sub_sel_3") or "None"
+                # p2_d1_text = st.session_state.get("p2_sub_sel_1") or "None Chosen"
+                # p2_d2_text = st.session_state.get("p2_sub_sel_2") or "None"
+                # p2_d3_text = st.session_state.get("p2_sub_sel_3") or "None"
                 
                 p2_markdown = f"""
                 Name: **{setup['p2_name']}**
                 
                 Faction: **{setup.get('p2_fac', 'Unknown')}**
                 
-                Formation 1: *{p2_d1_text}*
+                Formation 1: *{p2_sub_sel_1_dis}*
                 
-                Formation 2: *{p2_d2_text}*
+                Formation 2: *{p2_sub_sel_2_dis}*
                 
-                Formation 3: *{p2_d3_text}*
+                Formation 3: *{p2_sub_sel_3_dis}*
                 
                 Primary Score: **{scores['p2_pri']}**
                 
