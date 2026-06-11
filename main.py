@@ -903,9 +903,9 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
 
                     st.session_state.temp_scores = {
                         "p1_pri": p1_pri, "p1_sec": p1_sec, "p1_br": p1_br, "p1_killed_warlord": p1_killed_warlord, "p1_kills": p1_kills, "p1_kill_grade": p1_kill_grade,
-                        "p1_tabled_opponent": p1_tabled_opponent, "p1_sub_sel_1_dis": p1_sub_sel_1_dis, "p1_sub_sel_2_dis": p1_sub_sel_2_dis, "p1_sub_sel_3_dis": p1_sub_sel_3_dis,
+                        "p1_tabled_opponent": p1_tabled_opponent,
                         "p2_pri": p2_pri, "p2_sec": p2_sec, "p2_br": p2_br, "p2_killed_warlord": p2_killed_warlord, "p2_kills": p2_kills, "p2_kill_grade": p2_kill_grade,
-                        "p2_tabled_opponent": p2_tabled_opponent, "p2_sub_sel_1_dis": p2_sub_sel_1_dis, "p2_sub_sel_2_dis": p2_sub_sel_2_dis, "p2_sub_sel_3_dis": p2_sub_sel_3_dis
+                        "p2_tabled_opponent": p2_tabled_opponent
                     }
 
                     st.session_state.confirm_submit = True
