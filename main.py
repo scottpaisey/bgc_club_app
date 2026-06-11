@@ -725,9 +725,9 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
         p1_fac = st.session_state.game_data.get("p1_fac", None)
         p1_sub = st.session_state.game_data.get("p1_sub", None)
         p1_op_count = st.session_state.game_data.get("p1_op_count", None)
-        p1_sub_sel_1_dis = st.session_state.game_data.get("p1_sub_sel_1_dis", None)
-        p1_sub_sel_2_dis = st.session_state.game_data.get("p1_sub_sel_2_dis", None)
-        p1_sub_sel_3_dis = st.session_state.game_data.get("p1_sub_sel_3_dis", None)
+        p1_sub_1 = st.session_state.game_data.get("p1_sub_1", None)
+        p1_sub_2 = st.session_state.game_data.get("p1_sub_2", None)
+        p1_sub_3 = st.session_state.game_data.get("p1_sub_3", None)
 
 
         p2_id = st.session_state.game_data.get("p2_id", None)
@@ -737,9 +737,9 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
         p2_fac = st.session_state.game_data.get("p2_fac", None)
         p2_sub = st.session_state.game_data.get("p2_sub", None)
         p2_op_count = st.session_state.game_data.get("p2_op_count", None)
-        p2_sub_sel_1_dis = st.session_state.game_data.get("p2_sub_sel_1_dis", None)
-        p2_sub_sel_2_dis = st.session_state.game_data.get("p2_sub_sel_2_dis", None)
-        p2_sub_sel_3_dis = st.session_state.game_data.get("p2_sub_sel_3_dis", None)
+        p2_sub_1 = st.session_state.game_data.get("p2_sub_1", None)
+        p2_sub_2 = st.session_state.game_data.get("p2_sub_2", None)
+        p2_sub_3 = st.session_state.game_data.get("p2_sub_3", None)
 
         # 1. The Data Entry Form
         if not st.session_state.confirm_submit:
@@ -945,11 +945,11 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                 
                 Faction: **{setup.get('p1_fac', 'Unknown')}**
                 
-                Formation 1: *{p1_sub_sel_1_dis}*
+                Formation 1: *{p1_sub_1}*
                 
-                Formation 2: *{p1_sub_sel_2_dis}*
+                Formation 2: *{p1_sub_2}*
                 
-                Formation 3: *{p1_sub_sel_3_dis}*
+                Formation 3: *{p1_sub_3}*
                 
                 Primary Score: **{scores['p1_pri']}**
                 
@@ -1009,11 +1009,11 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                 
                 Faction: **{setup.get('p2_fac', 'Unknown')}**
                 
-                Formation 1: *{p2_sub_sel_1_dis}*
+                Formation 1: *{p2_sub_1}*
                 
-                Formation 2: *{p2_sub_sel_2_dis}*
+                Formation 2: *{p2_sub_2}*
                 
-                Formation 3: *{p2_sub_sel_3_dis}*
+                Formation 3: *{p2_sub_3}*
                 
                 Primary Score: **{scores['p2_pri']}**
                 
