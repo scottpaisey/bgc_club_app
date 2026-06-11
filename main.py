@@ -946,22 +946,23 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                 Secondary: **{scores['p1_sec']}**
                 
                 Battle Ready: **{scores['p1_br']}**
-                """
+                """            
             elif system_name == "Warhammer 40,000 (11th)":
-                # p1_d1_text = st.session_state.get("p1_sub_sel_1") or "None Chosen"
-                # p1_d2_text = st.session_state.get("p1_sub_sel_2") or "None"
-                # p1_d3_text = st.session_state.get("p1_sub_sel_3") or "None"
-                
+                # 🎯 FIX: Read the text labels using the exact '_label' keys you saved in game_data
+                p1_d1_text = setup.get("p1_sub_1_label") or "None Chosen"
+                p1_d2_text = setup.get("p1_sub_2_label") or "None"
+                p1_d3_text = setup.get("p1_sub_3_label") or "None"
+
                 p1_markdown = f"""
                 Name: **{setup['p1_name']}**
                 
                 Faction: **{setup.get('p1_fac', 'Unknown')}**
                 
-                Formation 1: *{p1_sub_1}* / *{p1_sub_1_label}*
+                Formation 1: *{p1_d1_text}*
                 
-                Formation 2: *{p1_sub_2}* / *{p1_sub_2_label}*
+                Formation 2: *{p1_d2_text}*
                 
-                Formation 3: *{p1_sub_3}* / *{p1_sub_3_label}*
+                Formation 3: *{p1_d3_text}*
                 
                 Primary Score: **{scores['p1_pri']}**
                 
@@ -969,6 +970,7 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                 
                 Battle Ready: **{scores['p1_br']}**
                 """
+            
             elif system_name == "Middle Earth: Strategy Battle Game":
                 p1_markdown = f"""
                 Name: **{setup['p1_name']}**
@@ -1012,20 +1014,20 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                 Battle Ready: **{scores['p2_br']}**
                 """
             elif system_name == "Warhammer 40,000 (11th)":
-                # p2_d1_text = st.session_state.get("p2_sub_sel_1") or "None Chosen"
-                # p2_d2_text = st.session_state.get("p2_sub_sel_2") or "None"
-                # p2_d3_text = st.session_state.get("p2_sub_sel_3") or "None"
+                p2_d1_text = setup.get("p2_sub_1_label") or "None Chosen"
+                p2_d2_text = setup.get("p2_sub_2_label") or "None"
+                p2_d3_text = setup.get("p2_sub_3_label") or "None"
                 
                 p2_markdown = f"""
                 Name: **{setup['p2_name']}**
                 
                 Faction: **{setup.get('p2_fac', 'Unknown')}**
                 
-                Formation 1: *{p2_sub_1}* / *{p2_sub_1_label}*
+                Formation 1: *{p2_d1_text}*
                 
-                Formation 2: *{p2_sub_2}* / *{p2_sub_2_label}*
+                Formation 2: *{p2_d2_text}*
                 
-                Formation 3: *{p2_sub_3}* / *{p2_sub_3_label}*
+                Formation 3: *{p2_d3_text}*
                 
                 Primary Score: **{scores['p2_pri']}**
                 
@@ -1033,6 +1035,7 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                 
                 Battle Ready: **{scores['p2_br']}**
                 """
+
             elif system_name == "Middle Earth: Strategy Battle Game":
                 p2_markdown = f"""
                 Name: **{setup['p2_name']}**
