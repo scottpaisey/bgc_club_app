@@ -693,7 +693,14 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                     "p1_sub_3": p1_sub_3,
                     "p2_sub_1": p2_sub_1,
                     "p2_sub_2": p2_sub_2,
-                    "p2_sub_3": p2_sub_3
+                    "p2_sub_3": p2_sub_3,
+                    "p1_sub_1_label": p1_sub_1_label,
+                    "p1_sub_2_label": p1_sub_2_label,
+                    "p1_sub_3_label": p1_sub_3_label,
+                    "p2_sub_1_label": p2_sub_1_label,
+                    "p2_sub_2_label": p2_sub_2_label,
+                    "p2_sub_3_label": p2_sub_3_label
+                    
                 }
 
                 # FIX 2: Switch the page and rerun
@@ -728,7 +735,9 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
         p1_sub_1 = st.session_state.game_data.get("p1_sub_1", None)
         p1_sub_2 = st.session_state.game_data.get("p1_sub_2", None)
         p1_sub_3 = st.session_state.game_data.get("p1_sub_3", None)
-
+        p1_sub_1_label = st.session_state.game_data.get("p1_sub_1_label", None)
+        p1_sub_2_label = st.session_state.game_data.get("p1_sub_2_label", None)
+        p1_sub_3_label = st.session_state.game_data.get("p1_sub_3_label", None)
 
         p2_id = st.session_state.game_data.get("p2_id", None)
         p2_name = st.session_state.game_data.get("p2_name", None)
@@ -740,6 +749,9 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
         p2_sub_1 = st.session_state.game_data.get("p2_sub_1", None)
         p2_sub_2 = st.session_state.game_data.get("p2_sub_2", None)
         p2_sub_3 = st.session_state.game_data.get("p2_sub_3", None)
+        p2_sub_1_label = st.session_state.game_data.get("p2_sub_1_label", None)
+        p2_sub_2_label = st.session_state.game_data.get("p2_sub_2_label", None)
+        p2_sub_3_label = st.session_state.game_data.get("p2_sub_3_label", None)
 
         # 1. The Data Entry Form
         if not st.session_state.confirm_submit:
@@ -945,11 +957,11 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                 
                 Faction: **{setup.get('p1_fac', 'Unknown')}**
                 
-                Formation 1: *{p1_sub_1}*
+                Formation 1: *{p1_sub_1}* / *{p1_sub_1_label}*
                 
-                Formation 2: *{p1_sub_2}*
+                Formation 2: *{p1_sub_2}* / *{p1_sub_2_label}*
                 
-                Formation 3: *{p1_sub_3}*
+                Formation 3: *{p1_sub_3}* / *{p1_sub_3_label}*
                 
                 Primary Score: **{scores['p1_pri']}**
                 
@@ -1009,11 +1021,11 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                 
                 Faction: **{setup.get('p2_fac', 'Unknown')}**
                 
-                Formation 1: *{p2_sub_1}*
+                Formation 1: *{p2_sub_1}* / *{p2_sub_1_label}*
                 
-                Formation 2: *{p2_sub_2}*
+                Formation 2: *{p2_sub_2}* / *{p2_sub_2_label}*
                 
-                Formation 3: *{p2_sub_3}*
+                Formation 3: *{p2_sub_3}* / *{p2_sub_3_label}*
                 
                 Primary Score: **{scores['p2_pri']}**
                 
