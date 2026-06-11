@@ -918,17 +918,15 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
 
             col_a, col_b = st.columns(2)
 
-            p1_lines = [
-                f"Name: **{setup['p1_name']}**"
-            ]
             if system_name == "Warhammer 40,000":
-                p1_lines.append([
+                p1_lines = [
+                    f"Name: **{setup['p1_name']}**"
                     f"\n\nFaction: {setup['p1_fac']}"
                     f"\n\nDetatchment: {setup['p1_sub']}"
                     f"\n\nPrimary: {scores['p1_pri']}"
                     f"\n\nSecondary: {scores['p1_sec']}"
                     f"\n\nBattle Ready: {scores['p1_br']}"
-                ])
+                ]
             elif system_name == "Warhammer 40,000 (11th)":
                 # Fetch the clean, human-readable text labels from the dropdown widgets safely
                 p1_d1_text = st.session_state.get("p1_sub_sel_1") or "None Chosen"
@@ -939,7 +937,8 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                 p2_d2_text = st.session_state.get("p2_sub_sel_2") or "None"
                 p2_d3_text = st.session_state.get("p2_sub_sel_3") or "None"
 
-                p1_lines.append([
+                p1_lines = [
+                    f"Name: **{setup['p1_name']}**"
                     f"Faction: **{setup.get('p1_fac', 'Unknown')}**",
                     f"Formation 1: {p1_d1_text}",
                     f"Formation 2: {p1_d2_text}",
@@ -947,37 +946,40 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                     f"Primary Score: {scores['p1_pri']}",
                     f"Secondary Score: {scores['p1_sec']}",
                     f"Battle Ready: {scores['p1_br']}"
-                ])
+                ]
 
             elif system_name == "Middle Earth: Strategy Battle Game":
-                p1_lines.append([
+                p1_lines = [
+                    f"Name: **{setup['p1_name']}**"
                     f"\n\nArmy List: {setup['p1_sub']}"
                     f"\n\nTotal Score: {scores['p1_pri']}"
-                ])
+                ]
             elif system_name == "Kill Team":
-                p1_lines.append([
+                p1_lines = [
+                    f"Name: **{setup['p1_name']}**"
                     f"\n\nFaction: {setup['p1_fac']}"
                     f"\n\nKill Team: {setup['p1_sub']}"
                     f"\n\nCrit Op: {scores['p1_pri']}"
                     f"\n\nTac Op: {scores['p1_sec']}"
                     f"\n\nKill Op: {scores['p1_kill_grade']}"
-                ])
+                ]
 
 
 
-            p2_lines = [
-                f"Name: **{setup['p2_name']}**"
-            ]
+
             if system_name == "Warhammer 40,000":
-                p2_lines.append([
+                p2_lines = [
+                    f"Name: **{setup['p2_name']}**"
                     f"\n\nFaction: {setup['p2_fac']}"
                     f"\n\nDetatchment: {setup['p2_sub']}"
                     f"\n\nPrimary: {scores['p2_pri']}"
                     f"\n\nSecondary: {scores['p2_sec']}"
                     f"\n\nBattle Ready: {scores['p2_br']}"
-                ])
+                ]
+                
             elif system_name == "Warhammer 40,000 (11th)":
-                p2_lines.append([
+                p2_lines = [
+                    f"Name: **{setup['p2_name']}**"
                     f"Faction: **{setup.get('p2_fac', 'Unknown')}**",
                     f"Formation 1: {p2_d1_text}",
                     f"Formation 2: {p2_d2_text}",
@@ -985,31 +987,26 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                     f"Primary Score: {scores['p2_pri']}",
                     f"Secondary Score: {scores['p2_sec']}",
                     f"Battle Ready: {scores['p2_br']}"
-                ])
+                ]
 
             elif system_name == "Middle Earth: Strategy Battle Game":
-                p2_lines.append([
+                p2_lines = [
+                    f"Name: **{setup['p2_name']}**"
                     f"\n\nArmy List: {setup['p2_sub']}"
                     f"\n\nTotal Score: {scores['p2_pri']}"
-                ])
+                ]
             elif system_name == "Kill Team":
-                p2_lines.append([
+                p2_lines = [
+                    f"Name: **{setup['p2_name']}**"
                     f"\n\nFaction: {setup['p2_fac']}"
                     f"\n\nKill Team: {setup['p2_sub']}"
                     f"\n\nCrit Op: {scores['p2_pri']}"
                     f"\n\nTac Op: {scores['p2_sec']}"
                     f"\n\nKill Op: {scores['p2_kill_grade']}"
-                ])
+                ]
 
-            with col_a:
-                for line in p1_lines:
-                    st.write(line)
-            with col_b:
-                for line in p2_lines:
-                    st.write(line)
-
-            # col_a.write(p1_lines)
-            # col_b.write(p2_lines)
+            col_a.write(p1_lines)
+            col_b.write(p2_lines)
 
             c1, c2 = st.columns(2)
 
