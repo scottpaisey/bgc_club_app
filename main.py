@@ -918,95 +918,140 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
 
             col_a, col_b = st.columns(2)
 
+            # =========================================================================
+            # BUILD PLAYER 1 SUMMARY MARKDOWN TEXT
+            # =========================================================================
             if system_name == "Warhammer 40,000":
-                p1_lines = [
-                    f"Name: **{setup['p1_name']}**"
-                    f"\n\nFaction: {setup['p1_fac']}"
-                    f"\n\nDetatchment: {setup['p1_sub']}"
-                    f"\n\nPrimary: {scores['p1_pri']}"
-                    f"\n\nSecondary: {scores['p1_sec']}"
-                    f"\n\nBattle Ready: {scores['p1_br']}"
-                ]
+                p1_markdown = f"""
+                Name: **{setup['p1_name']}**
+                
+                Faction: **{setup['p1_fac']}**
+                
+                Detachment: *{setup['p1_sub']}*
+                
+                Primary: **{scores['p1_pri']}**
+                
+                Secondary: **{scores['p1_sec']}**
+                
+                Battle Ready: **{scores['p1_br']}**
+                """
             elif system_name == "Warhammer 40,000 (11th)":
-                # Fetch the clean, human-readable text labels from the dropdown widgets safely
                 p1_d1_text = st.session_state.get("p1_sub_sel_1") or "None Chosen"
                 p1_d2_text = st.session_state.get("p1_sub_sel_2") or "None"
                 p1_d3_text = st.session_state.get("p1_sub_sel_3") or "None"
                 
+                p1_markdown = f"""
+                Name: **{setup['p1_name']}**
+                
+                Faction: **{setup.get('p1_fac', 'Unknown')}**
+                
+                Formation 1: *{p1_d1_text}*
+                
+                Formation 2: *{p1_d2_text}*
+                
+                Formation 3: *{p1_d3_text}*
+                
+                Primary Score: **{scores['p1_pri']}**
+                
+                Secondary Score: **{scores['p1_sec']}**
+                
+                Battle Ready: **{scores['p1_br']}**
+                """
+            elif system_name == "Middle Earth: Strategy Battle Game":
+                p1_markdown = f"""
+                Name: **{setup['p1_name']}**
+                
+                Army List: *{setup['p1_sub']}*
+                
+                Total Score: **{scores['p1_pri']}**
+                """
+            elif system_name == "Kill Team":
+                p1_markdown = f"""
+                Name: **{setup['p1_name']}**
+                
+                Faction: **{setup['p1_fac']}**
+                
+                Kill Team: *{setup['p1_sub']}*
+                
+                Crit Op: **{scores['p1_pri']}**
+                
+                Tac Op: **{scores['p1_sec']}**
+                
+                Kill Op: **{scores['p1_kill_grade']}**
+                """
+            else:
+                p1_markdown = ""
+
+            # =========================================================================
+            # BUILD PLAYER 2 SUMMARY MARKDOWN TEXT
+            # =========================================================================
+            if system_name == "Warhammer 40,000":
+                p2_markdown = f"""
+                Name: **{setup['p2_name']}**
+                
+                Faction: **{setup['p2_fac']}**
+                
+                Detachment: *{setup['p2_sub']}*
+                
+                Primary: **{scores['p2_pri']}**
+                
+                Secondary: **{scores['p2_sec']}**
+                
+                Battle Ready: **{scores['p2_br']}**
+                """
+            elif system_name == "Warhammer 40,000 (11th)":
                 p2_d1_text = st.session_state.get("p2_sub_sel_1") or "None Chosen"
                 p2_d2_text = st.session_state.get("p2_sub_sel_2") or "None"
                 p2_d3_text = st.session_state.get("p2_sub_sel_3") or "None"
-
-                p1_lines = [
-                    f"Name: **{setup['p1_name']}**"
-                    f"Faction: **{setup.get('p1_fac', 'Unknown')}**",
-                    f"Formation 1: {p1_d1_text}",
-                    f"Formation 2: {p1_d2_text}",
-                    f"Formation 3: {p1_d3_text}",
-                    f"Primary Score: {scores['p1_pri']}",
-                    f"Secondary Score: {scores['p1_sec']}",
-                    f"Battle Ready: {scores['p1_br']}"
-                ]
-
-            elif system_name == "Middle Earth: Strategy Battle Game":
-                p1_lines = [
-                    f"Name: **{setup['p1_name']}**"
-                    f"\n\nArmy List: {setup['p1_sub']}"
-                    f"\n\nTotal Score: {scores['p1_pri']}"
-                ]
-            elif system_name == "Kill Team":
-                p1_lines = [
-                    f"Name: **{setup['p1_name']}**"
-                    f"\n\nFaction: {setup['p1_fac']}"
-                    f"\n\nKill Team: {setup['p1_sub']}"
-                    f"\n\nCrit Op: {scores['p1_pri']}"
-                    f"\n\nTac Op: {scores['p1_sec']}"
-                    f"\n\nKill Op: {scores['p1_kill_grade']}"
-                ]
-
-
-
-
-            if system_name == "Warhammer 40,000":
-                p2_lines = [
-                    f"Name: **{setup['p2_name']}**"
-                    f"\n\nFaction: {setup['p2_fac']}"
-                    f"\n\nDetatchment: {setup['p2_sub']}"
-                    f"\n\nPrimary: {scores['p2_pri']}"
-                    f"\n\nSecondary: {scores['p2_sec']}"
-                    f"\n\nBattle Ready: {scores['p2_br']}"
-                ]
                 
-            elif system_name == "Warhammer 40,000 (11th)":
-                p2_lines = [
-                    f"Name: **{setup['p2_name']}**"
-                    f"Faction: **{setup.get('p2_fac', 'Unknown')}**",
-                    f"Formation 1: {p2_d1_text}",
-                    f"Formation 2: {p2_d2_text}",
-                    f"Formation 3: {p2_d3_text}",
-                    f"Primary Score: {scores['p2_pri']}",
-                    f"Secondary Score: {scores['p2_sec']}",
-                    f"Battle Ready: {scores['p2_br']}"
-                ]
-
+                p2_markdown = f"""
+                Name: **{setup['p2_name']}**
+                
+                Faction: **{setup.get('p2_fac', 'Unknown')}**
+                
+                Formation 1: *{p2_d1_text}*
+                
+                Formation 2: *{p2_d2_text}*
+                
+                Formation 3: *{p2_d3_text}*
+                
+                Primary Score: **{scores['p2_pri']}**
+                
+                Secondary Score: **{scores['p2_sec']}**
+                
+                Battle Ready: **{scores['p2_br']}**
+                """
             elif system_name == "Middle Earth: Strategy Battle Game":
-                p2_lines = [
-                    f"Name: **{setup['p2_name']}**"
-                    f"\n\nArmy List: {setup['p2_sub']}"
-                    f"\n\nTotal Score: {scores['p2_pri']}"
-                ]
+                p2_markdown = f"""
+                Name: **{setup['p2_name']}**
+                
+                Army List: *{setup['p2_sub']}*
+                
+                Total Score: **{scores['p2_pri']}**
+                """
             elif system_name == "Kill Team":
-                p2_lines = [
-                    f"Name: **{setup['p2_name']}**"
-                    f"\n\nFaction: {setup['p2_fac']}"
-                    f"\n\nKill Team: {setup['p2_sub']}"
-                    f"\n\nCrit Op: {scores['p2_pri']}"
-                    f"\n\nTac Op: {scores['p2_sec']}"
-                    f"\n\nKill Op: {scores['p2_kill_grade']}"
-                ]
+                p2_markdown = f"""
+                Name: **{setup['p2_name']}**
+                
+                Faction: **{setup['p2_fac']}**
+                
+                Kill Team: *{setup['p2_sub']}*
+                
+                Crit Op: **{scores['p2_pri']}**
+                
+                Tac Op: **{scores['p2_sec']}**
+                
+                Kill Op: **{scores['p2_kill_grade']}**
+                """
+            else:
+                p2_markdown = ""
 
-            col_a.write(p1_lines)
-            col_b.write(p2_lines)
+            # -------------------------------------------------------------
+            # RENDER RETAINING PROPER MARKDOWN WRAPPERS
+            # -------------------------------------------------------------
+            col_a.markdown(p1_markdown)
+            col_b.markdown(p2_markdown)
+
 
             c1, c2 = st.columns(2)
 
@@ -1113,22 +1158,11 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                 st.session_state.confirm_submit = False
                 st.rerun()
 
-
-
-
-
 def log_game_league():
     st.rerun()
 
 def log_game_ladder():
     st.rerun()
-
-
-
-
-
-
-
 
 
 # 5. THE ROUTER (The only place UI is drawn)
