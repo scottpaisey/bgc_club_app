@@ -669,7 +669,7 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                 else:
                     went_first_id = actual_p2_id
 
-                # Save finalized parameters into game_data wrapper
+                 # Save finalized parameters into game_data wrapper
                 st.session_state.game_data = {
                     "system_id": system_id,
                     "p1_id": st.session_state.user.id,
@@ -688,24 +688,29 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                     "defender_id": defender_id,
                     "went_first_id": went_first_id,
                     "game_size": game_size,
+                    
+                    # Raw database tracking UUID keys
                     "p1_sub_1": p1_sub_1,
                     "p1_sub_2": p1_sub_2,
                     "p1_sub_3": p1_sub_3,
                     "p2_sub_1": p2_sub_1,
                     "p2_sub_2": p2_sub_2,
                     "p2_sub_3": p2_sub_3,
-                    "p1_sub_1_label": p1_sub_1_label,
-                    "p1_sub_2_label": p1_sub_2_label,
-                    "p1_sub_3_label": p1_sub_3_label,
-                    "p2_sub_1_label": p2_sub_1_label,
-                    "p2_sub_2_label": p2_sub_2_label,
-                    "p2_sub_3_label": p2_sub_3_label
                     
+                    # 🎯 FIX: Fetch labels directly from the active widget states to bypass local scoping limits!
+                    "p1_sub_1_label": st.session_state.get("p1_sub_sel_1") or "None Chosen",
+                    "p1_sub_2_label": st.session_state.get("p1_sub_sel_2") or "None",
+                    "p1_sub_3_label": st.session_state.get("p1_sub_sel_3") or "None",
+                    
+                    "p2_sub_1_label": st.session_state.get("p2_sub_sel_1") or "None Chosen",
+                    "p2_sub_2_label": st.session_state.get("p2_sub_sel_2") or "None",
+                    "p2_sub_3_label": st.session_state.get("p2_sub_sel_3") or "None"
                 }
 
-                # FIX 2: Switch the page and rerun
+                # Switch the page context path and rerun execution
                 st.session_state.page = "Log_Games_Score_Functions"
                 st.rerun()
+
 
 def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id, club_id, system_short_name):
     """
