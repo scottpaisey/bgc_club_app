@@ -704,7 +704,7 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                 }
 
                 # Switch the page context path and rerun execution
-                st.session_state.page = "Log_Games_Score_Functions"
+                st.session_state.page = "Log_Games_Score"
                 st.rerun()
 
 
@@ -1545,7 +1545,7 @@ else:
                 st.session_state.club_id
             )
         
-    if st.session_state.page == "Log_Games_Score_Functions":
+    if st.session_state.page == "Log_Games_Score":
         st.header("Log the Scores for your Match Here")
         st.divider()    
         
