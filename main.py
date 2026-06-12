@@ -121,6 +121,10 @@ if "user" in st.session_state and "user_role" not in st.session_state:
 def show_login_screen():
     st.title("BGC Club App Sign In")
     st.info("Please sign in with your Discord to use this app.")
+
+    # # local device testing link
+    # redirect_uri = "http://localhost:8501/"
+    # # live link
     redirect_uri = "https://bgc-app.streamlit.app/"
     try:
         response = supabase.auth.sign_in_with_oauth({
@@ -132,6 +136,9 @@ def show_login_screen():
             st.link_button("Sign in with Discord", response.url)
     except Exception as e:
         st.error(f"Error: {e}")
+
+
+
 
 def log_game_details(page, system_name, system_id, system_short_name, event_id, round_id, mission_id, club_id):
     """Function for all system logging to reduce repeated code"""
@@ -163,9 +170,6 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
             game_size = st.number_input("Game Size", 0, 1500, key="game_s")
         elif system_name == "Kill Team":
             game_size = "Kill Team"
-        elif system_name == 'Age of Sigmar':
-            game_size = st.selectbox('Game Size', ['2,000 Points', '1,000 Points', 'Other'], index=None,
-                                     placeholder="Choose...", key="game_s")
 
         st.write("**Your Details**")
 
@@ -228,24 +232,24 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                 p1_sub = st.selectbox("Your Kill Team", [], disabled=True)
             # p1_wf = st.toggle("Went First?*", key="p1_wf_key", on_change=handle_wf_toggle, args=("p1",))
 
-        elif system_name == "Age Of Sigmar":
-            # 2. Faction Dropdown
-            if p1_all:
-                # We filter the dataframe here
-                p1_fac_df = p1_all_df[p1_all_df['allegiance'] == p1_all]
-                # We use faction_df to get the unique names for the options
-                p1_fac = st.selectbox("Your Faction", p1_fac_df['faction'].unique(), index=None,
-                                      placeholder="Choose...", key="p1_fac_sel")
-            else:
-                p1_fac = st.selectbox("Your Faction", [], disabled=True)
-            # 3. Sub-Faction Dropdown (MUST use filtered options)
-            if p1_fac:
-                p1_sub_df = p1_fac_df[p1_fac_df['faction'] == p1_fac]
-                p1_sub = st.selectbox("Your Sub-Faction", p1_sub_df['subfaction'].unique(), index=None,
-                                      placeholder="Choose...", key="p1_sub_sel")
-            else:
-                p1_sub = st.selectbox("Your Sub-Faction", [], disabled=True)
-            # p1_wf = st.toggle("Went First?*", key="p1_wf_key", on_change=handle_wf_toggle, args=("p1",))
+        # elif system_name == "Age Of Sigmar":
+        #     # 2. Faction Dropdown
+        #     if p1_all:
+        #         # We filter the dataframe here
+        #         p1_fac_df = p1_all_df[p1_all_df['allegiance'] == p1_all]
+        #         # We use faction_df to get the unique names for the options
+        #         p1_fac = st.selectbox("Your Faction", p1_fac_df['faction'].unique(), index=None,
+        #                               placeholder="Choose...", key="p1_fac_sel")
+        #     else:
+        #         p1_fac = st.selectbox("Your Faction", [], disabled=True)
+        #     # 3. Sub-Faction Dropdown (MUST use filtered options)
+        #     if p1_fac:
+        #         p1_sub_df = p1_fac_df[p1_fac_df['faction'] == p1_fac]
+        #         p1_sub = st.selectbox("Your Sub-Faction", p1_sub_df['subfaction'].unique(), index=None,
+        #                               placeholder="Choose...", key="p1_sub_sel")
+        #     else:
+        #         p1_sub = st.selectbox("Your Sub-Faction", [], disabled=True)
+        #     # p1_wf = st.toggle("Went First?*", key="p1_wf_key", on_change=handle_wf_toggle, args=("p1",))
 
         elif system_name == "Warhammer 40,000":
             # 2. Faction Dropdown
@@ -709,6 +713,11 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
 
 
 def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id, club_id, system_short_name):
+    """
+        Systems Included:   40k (10th)
+        Systems Tested:     None
+        Systems Passed:     None
+    """
     if st.session_state.page == page:
 
         st.subheader("Game Scores")
@@ -812,15 +821,8 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                             p1_br = 0
 
                     if system_name == 'Warhammer 40,000 (11th)':
-                        p1_secondary_type = st.selectbox('Secondary Type*', ['Fixed', 'Tactical'], index=None,
-                         placeholder="Choose...", key="p1_secondary_type")
                         p1_pri = st.number_input("Primary Score*", 0, 45, key="p1_p")
-                        secondary_max_score = 0
-                        if secondary_type == 'Fixed':
-                            secondary_max_score = 40
-                        else:
-                            secondary_max_score = 45
-                        p1_sec = st.number_input("Secondary Score*", 0, secondary_max_score, key="p1_s")
+                        p1_sec = st.number_input("Secondary Score*", 0, 45, key="p1_s")
                         if st.toggle("Battle Ready?*", key="p1_br"):
                             p1_br = 10
                         else:
@@ -860,15 +862,8 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                             p2_br = 0
 
                     if system_name == 'Warhammer 40,000 (11th)':
-                        p2_secondary_type = st.selectbox('Secondary Type*', ['Fixed', 'Tactical'], index=None,
-                         placeholder="Choose...", key="p2_secondary_type")
                         p2_pri = st.number_input("Primary Score*", 0, 45, key="p2_p")
-                        p2_secondary_max_score = 0
-                        if p2_secondary_type == 'Fixed':
-                            p2_secondary_max_score = 40
-                        else:
-                            p2_secondary_max_score = 45
-                        p2_sec = st.number_input("Secondary Score*", 0, p2_secondary_max_score, key="p1_s")
+                        p2_sec = st.number_input("Secondary Score*", 0, 45, key="p2_s")
                         if st.toggle("Battle Ready?*", key="p2_br"):
                             p2_br = 10
                         else:
@@ -908,9 +903,9 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
 
                     st.session_state.temp_scores = {
                         "p1_pri": p1_pri, "p1_sec": p1_sec, "p1_br": p1_br, "p1_killed_warlord": p1_killed_warlord, "p1_kills": p1_kills, "p1_kill_grade": p1_kill_grade,
-                        "p1_tabled_opponent": p1_tabled_opponent, "p1_secondary_type": p1_secondary_type,
+                        "p1_tabled_opponent": p1_tabled_opponent,
                         "p2_pri": p2_pri, "p2_sec": p2_sec, "p2_br": p2_br, "p2_killed_warlord": p2_killed_warlord, "p2_kills": p2_kills, "p2_kill_grade": p2_kill_grade,
-                        "p2_tabled_opponent": p2_tabled_opponent, "p2_secondary_type": p2_secondary_type
+                        "p2_tabled_opponent": p2_tabled_opponent
                     }
 
                     st.session_state.confirm_submit = True
@@ -1125,8 +1120,6 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                     "p2_killed_warlord": scores['p2_killed_warlord'],
                     "p1_tabled_opponent": scores['p1_tabled_opponent'],
                     "p2_tabled_opponent": scores['p2_tabled_opponent'],
-                    "p1_secondary_type": scores['p1_secondary_type'],
-                    "p2_secondary_type": scores['p2_secondary_type']
                 }
 
                 try:
@@ -1595,8 +1588,6 @@ else:
         st.caption("King of the Hill — Casual 3-Month Matched Play Campaign")
         st.divider()
 
-        # log_game_league()
-        
         # System ID for 11th Edition 40K system row
         SYSTEM_11TH_ID = 'ccc3b65d-a53c-4528-9b6e-d0313e71c790'
 
@@ -1630,7 +1621,6 @@ else:
         # -------------------------------------------------------------
         # 2. HORIZONTAL PAGE NAVIGATION TABS
         # -------------------------------------------------------------
-
         view_tab, log_tab, history_tab = st.tabs([
             "📊 Current Standings", 
             "⚔️ Issue / Log Challenge", 
@@ -4898,9 +4888,3 @@ else:
     #         if c2.button("❌ No, Edit Scores", use_container_width=True):
     #             st.session_state.confirm_submit = False
     #             st.rerun()
-
-
-
-
-
-
