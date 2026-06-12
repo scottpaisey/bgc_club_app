@@ -815,12 +815,12 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                         p1_secondary_type = st.selectbox('Secondary Type*', ['Fixed', 'Tactical'], index=None,
                          placeholder="Choose...", key="p1_secondary_type")
                         p1_pri = st.number_input("Primary Score*", 0, 45, key="p1_p")
-                        secondary_max_score = 0
-                        if secondary_type == 'Fixed':
-                            secondary_max_score = 40
+                        p1_secondary_max_score = 0
+                        if p1_secondary_type == 'Fixed':
+                            p1_secondary_max_score = 40
                         else:
-                            secondary_max_score = 45
-                        p1_sec = st.number_input("Secondary Score*", 0, secondary_max_score, key="p1_s")
+                            p1_secondary_max_score = 45
+                        p1_sec = st.number_input("Secondary Score*", 0, p1_secondary_max_score, key="p1_s")
                         if st.toggle("Battle Ready?*", key="p1_br"):
                             p1_br = 10
                         else:
