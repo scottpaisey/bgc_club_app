@@ -868,7 +868,7 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                             p2_secondary_max_score = 40
                         else:
                             p2_secondary_max_score = 45
-                        p2_sec = st.number_input("Secondary Score*", 0, p2_secondary_max_score, key="p1_s")
+                        p2_sec = st.number_input("Secondary Score*", 0, p2_secondary_max_score, key="p2_s")
                         if st.toggle("Battle Ready?*", key="p2_br"):
                             p2_br = 10
                         else:
