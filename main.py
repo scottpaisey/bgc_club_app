@@ -1212,7 +1212,7 @@ else:
         time.sleep(0.1)
         st.rerun()
     if st.sidebar.button("Log Games"):
-        st.session_state.page = "Log Games"
+        st.session_state.page = "Log_Games"
         collapse_sidebar()
         time.sleep(0.1)
         st.rerun()
@@ -1497,7 +1497,7 @@ else:
         else:
             st.info("No match history found yet. Go log some games!")
 
-    elif st.session_state.page == "Log Games":
+    elif st.session_state.page == "Log_Games":
         st.header("Log Games")
         st.divider()
         st.subheader("Please Choose the System you want to log a game against")
@@ -1520,7 +1520,7 @@ else:
             matched_row = df_system_data[df_system_data['name'] == selected_name].iloc[0]
 
             # Save everything to session_state so the scoring page can read it later
-            st.session_state.system_page = 'Log_Games_Functions'
+            st.session_state.system_page = 'Log_Games'
             st.session_state.system_id = matched_row['id']
             st.session_state.system_name = matched_row['name']
             st.session_state.system_is_active = matched_row['is_active']
