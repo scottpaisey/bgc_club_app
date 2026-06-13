@@ -748,7 +748,7 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
         p2_sub_1_label = st.session_state.game_data.get("p2_sub_1_label", None)
         p2_sub_2_label = st.session_state.game_data.get("p2_sub_2_label", None)
         p2_sub_3_label = st.session_state.game_data.get("p2_sub_3_label", None)
-
+        
         # 1. The Data Entry Form
         if not st.session_state.confirm_submit:
 
@@ -903,7 +903,24 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                 submit_scores = st.form_submit_button("Review Results")
 
                 if submit_scores:
+                   # 🛡️ ERROR CATCHING PASSTHROUGH
+                    has_validation_error = False
+                    
+                    if system_name == 'Warhammer 40,000 (11th)':
+                        # Check Player 1 Rules
+                        if p1_secondary_type == "Fixed" and p1_sec > 40:
+                            st.error(f"❌ **{p1_name}** cannot score more than **40 points** on a **Fixed** secondary objective configuration!")
+                            has_validation_error = True
+                            
+                        # Check Player 2 Rules
+                        if p2_secondary_type == "Fixed" and p2_sec > 40:
+                            st.error(f"❌ **{p2_name}** cannot score more than **40 points** on a **Fixed** secondary objective configuration!")
+                            has_validation_error = True
 
+                    # Halt execution flow if any validation rules are broken
+                    if has_validation_error:
+                        st.stop()
+                        
                     if system_name == 'Kill Team':
                         p1_kill_grade = calculate_kill_grade(p1_kills, p2_op_count)
                         p2_kill_grade = calculate_kill_grade(p2_kills, p1_op_count)
