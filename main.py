@@ -1740,7 +1740,7 @@ else:
                 
                 with col_ranked:
                     st.markdown("### 🏆 The Established Ladder")
-                    ranked_df = parts_df[parts_df["current_rank"].notna()].sort_value s("current_rank")
+                    ranked_df = parts_df[parts_df["current_rank"].notna()].sort_value("current_rank")
                     
                     if ranked_df.empty:
                         st.caption("No matches have been played yet. Everyone is currently in the entry pool!")
