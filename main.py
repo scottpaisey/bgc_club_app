@@ -1217,13 +1217,13 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                     p1_display_name = game_setup_data.get("p1_name", "Player 1")
                     p2_display_name = game_setup_data.get("p2_name", "Player 2")
                     
-                    # Look for Player 2's Discord ID if you store it in game_data, otherwise default to None
-                    p2_discord_id = game_setup_data.get("p2_discord_id") or game_setup_data.get("p2_sub")
+                    # # Look for Player 2's Discord ID if you store it in game_data, otherwise default to None
+                    # p2_discord_id = game_setup_data.get("p2_discord_id") or game_setup_data.get("p2_sub")
 
                     # 🛠️ FORMATTING: Wrap IDs in Discord's ping markup syntax. 
                     # Fall back to plain bold names if an ID isn't found.
-                    p1_ping = f"<@{p1_discord_id}>" if p1_discord_id else f"**{p1_display_name}**"
-                    p2_ping = f"<@{p2_discord_id}>" if p2_discord_id else f"**{p2_display_name}**"
+                    p1_ping = f"<@{p1_id}>" if p1_id else f"**{p1_display_name}**"
+                    p2_ping = f"<@{p2_id}>" if p2_id else f"**{p2_display_name}**"
 
                     p1_score = match_details["p1_score_total"]
                     p2_score = match_details["p2_score_total"]
