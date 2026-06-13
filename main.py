@@ -185,6 +185,8 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
 
         # 🎯 FIX: Initialize system tracking variables at baseline scope level
         # This completely prevents UnboundLocalErrors in non-11th Edition game modes!
+        p1_fac = None
+        p2_fac = None
         p1_fac_id = None
         p2_fac_id = None
         
