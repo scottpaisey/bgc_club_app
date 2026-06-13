@@ -1194,34 +1194,24 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                         meta = st.session_state.user.user_metadata
                         p1_discord_id = meta.get("provider_id") or meta.get("sub")
 
-                    # Player 2 (Defender) ID from your database table row
-                    # (Assumes you are saving 'defender_discord_id' or 'discord_id' in your players/defender lookup view)
-                    p2_discord_id = defender_row.get("discord_id") or defender_row.get("provider_id")
+                    # 🎯 FIX: Extract player names and fallback parameters directly from your game_data object!
+                    game_setup_data = st.session_state.get("game_data", {})
+                    p1_display_name = game_setup_data.get("p1_name", user_name)
+                    p2_display_name = game_setup_data.get("p2_name", "Opponent")
+                    
+                    # Look for Player 2's Discord ID if you store it in game_data, otherwise default to None
+                    p2_discord_id = game_setup_data.get("p2_discord_id") or game_setup_data.get("p2_sub")
 
                     # 🛠️ FORMATTING: Wrap IDs in Discord's ping markup syntax. 
                     # Fall back to plain bold names if an ID isn't found.
-                    p1_ping = f"<@{p1_discord_id}>" if p1_discord_id else f"**{user_name}**"
-                    p2_ping = f"<@{p2_discord_id}>" if p2_discord_id else f"**{defender_row['player_name']}**"
+                    p1_ping = f"<@{p1_discord_id}>" if p1_discord_id else f"**{p1_display_name}**"
+                    p2_ping = f"<@{p2_discord_id}>" if p2_discord_id else f"**{p2_display_name}**"
 
-                    # # SEND TO WEBHOOK: True structural pings will now notify users on your server!
-                    # post_to_discord_webhook(
-                    #     f"⚔️ **Sector Ladder Challenge Settled!**\n"
-                    #     f"{p1_ping} challenged {p2_ping}! Final Score: **{p1_score}** - **{p2_score}**."
-                    # )
-                    
-                    # st.success("🎉 Battle recorded successfully! The Sector Ladder positions have shifted.")
-                    # time.sleep(1.5)
-                    # st.rerun()
-                    
                     # 5. Broadcast alerts and wipe processing session state variables
                     post_to_discord_webhook(
                         f"⚔️ **Match Logged!**\n"
                         f"{p1_ping} challenged {p2_ping}! Final Score: **{p1_score}** - **{p2_score}**."
                     )
-                    # post_to_discord_webhook(
-                    #     f"⚔️ **Sector Ladder Challenge Settled!**\n"
-                    #     f"{p1_ping} challenged {p2_ping}! Final Score: **{p1_score}** - **{p2_score}**."
-                    # )
                     st.success("Game posted to Supabase!")
 
                     st.session_state.game_data = {}
