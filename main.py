@@ -1228,7 +1228,7 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                     # 5. Broadcast alerts and wipe processing session state variables
                     post_to_discord_webhook(
                         f"⚔️ **Match Logged!**\n"
-                        f"{p1_ping} challenged {p2_ping}! Final Score: **{p1_score}** - **{p2_score}**."
+                        f"{p1_ping} challenged {p2_ping}! Final Score: **{p1_score_total}** - **{p2_score_total}**."
                     )
                     st.success("Game posted to Supabase!")
 
