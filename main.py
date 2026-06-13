@@ -42,15 +42,33 @@ def collapse_sidebar():
         pass
 
 
+# @st.cache_resource
+# def get_supabase_client():
+#     load_dotenv()
+#     url = os.getenv("SUPABASE_URL")
+#     key = os.getenv("SUPABASE_KEY")
+#     # This forces EVERY auth action to use PKCE (?code=) instead of Implicit (#hash)
+#     return create_client(url, key, options=ClientOptions(flow_type="pkce"))
+
+# supabase = get_supabase_client()
+
 @st.cache_resource
 def get_supabase_client():
     load_dotenv()
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_KEY")
-    # This forces EVERY auth action to use PKCE (?code=) instead of Implicit (#hash)
-    return create_client(url, key, options=ClientOptions(flow_type="pkce"))
+    
+    # 🎯 FIX: Bundle PKCE flow, background token refreshing, and session persistence together
+    client_options = ClientOptions(
+        flow_type="pkce",
+        auto_refresh_token=True,
+        persist_session=True
+    )
+    
+    return create_client(url, key, options=client_options)
 
 supabase = get_supabase_client()
+
 
 def check_admin_access(supabase):
     """Returns True if the logged-in user is an admin, False otherwise."""
