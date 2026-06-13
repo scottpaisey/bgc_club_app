@@ -1205,13 +1205,6 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                 st.session_state.confirm_submit = False
                 st.rerun()
 
-def log_game_league():
-    st.rerun()
-
-def log_game_ladder():
-    st.rerun()
-
-
 # 5. THE ROUTER (The only place UI is drawn)
 if "user" not in st.session_state:
     show_login_screen()
@@ -1614,8 +1607,6 @@ else:
         st.header("BGC Ladder")
         st.caption("King of the Hill — Casual 3-Month Matched Play Campaign")
         st.divider()
-
-        # log_game_league()
         
         # System ID for 11th Edition 40K system row
         SYSTEM_11TH_ID = 'ccc3b65d-a53c-4528-9b6e-d0313e71c790'
@@ -1788,7 +1779,7 @@ else:
                                 supabase.table("matches").insert(match_payload).execute()
                                 
                                 # FIX: Properly indented the success routines inside the try block
-                                post_to_discord_webhook(f"⚔️ **Ladder Challenge Settled!**\n**{user_name}** challenged {defender_row['player_name']}! Final Score: {p1_score} - {p2_score}.")
+                                post_to_discord_webhook(f"⚔️ **Ladder Challenge Settled!**\n**@{user_name}** challenged @{defender_row['player_name']}! Final Score: {p1_score} - {p2_score}.")
                                 st.success("🎉 Battle recorded successfully! The Sector Ladder positions have shifted.")
                                 time.sleep(1.5)
                                 st.rerun()
