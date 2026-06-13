@@ -927,7 +927,7 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
 
                     if system_name == 'Kill Team':
                         try:
-                            p2_max_kills = int(p1_op_count) if p21op_count is not None else 14
+                            p2_max_kills = int(p1_op_count) if p1_op_count is not None else 14
                         except (ValueError, TypeError):
                             p2_max_kills = 14
                         p2_pri = st.number_input("Crit Op Score*", 0, 6, key="p2_p")
