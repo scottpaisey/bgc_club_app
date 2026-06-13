@@ -151,6 +151,8 @@ def show_login_screen():
     except Exception as e:
         st.error(f"Error: {e}")
 
+
+
 def log_game_details(page, system_name, system_id, system_short_name, event_id, round_id, mission_id, club_id):
     """Function for all system logging to reduce repeated code"""
     if st.session_state.page == page:
@@ -168,23 +170,33 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
             p2_response_detatchment = supabase.table("system_factions_11th").select("*").execute()
             p2_df_detatchment = pd.DataFrame(p2_response_detatchment.data)
 
+            # 🎯 OPTIMISATION: If we have an event_id, query ONLY that event's row to keep things fast
+            if event_id is not None:
+                event_response = supabase.table("event_details").select("*").eq("id", event_id).execute()
+                if event_response.data:
+                    # Pull out the first matching record as a clean dictionary
+                    matched_event = event_response.data[0]
+                    game_size = matched_event.get("ev_size")
+
         except Exception as e:
             print(e)
-
+            
         st.subheader("Game Details")
 
-        # Game Size
-        if system_name in ('Warhammer 40,000', 'Warhammer 40,000 (11th)'):
-            game_size = st.selectbox('Game Size', ['Strike Force', 'Incursion', 'Combat Patrol', 'Other'], index=None,
-                                     placeholder="Choose...", key="game_s")
-        elif system_name == "Middle Earth: Strategy Battle Game":
-            game_size = st.number_input("Game Size", 0, 1500, key="game_s")
-        elif system_name == "Kill Team":
-            game_size = "Kill Team"
-        elif system_name == 'Age of Sigmar':
-            game_size = st.selectbox('Game Size', ['2,000 Points', '1,000 Points', 'Other'], index=None,
-                                     placeholder="Choose...", key="game_s")
+        if event_id is None:
+            # Game Size
+            if system_name in ('Warhammer 40,000', 'Warhammer 40,000 (11th)'):
+                game_size = st.selectbox('Game Size', ['Strike Force', 'Incursion', 'Combat Patrol', 'Other'], index=None,
+                                         placeholder="Choose...", key="game_s")
+            elif system_name == "Middle Earth: Strategy Battle Game":
+                game_size = st.number_input("Game Size", 0, 1500, key="game_s")
+            elif system_name == "Kill Team":
+                game_size = "Kill Team"
+            elif system_name == 'Age of Sigmar':
+                game_size = st.selectbox('Game Size', ['2,000 Points', '1,000 Points', 'Other'], index=None,
+                                         placeholder="Choose...", key="game_s")
 
+        
         st.write("**Your Details**")
 
         # Extract the name from Discord metadata
@@ -263,7 +275,6 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                                       placeholder="Choose...", key="p1_sub_sel")
             else:
                 p1_sub = st.selectbox("Your Sub-Faction", [], disabled=True)
-            # p1_wf = st.toggle("Went First?*", key="p1_wf_key", on_change=handle_wf_toggle, args=("p1",))
 
         elif system_name == "Warhammer 40,000":
             # 2. Faction Dropdown
@@ -282,7 +293,6 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                                       placeholder="Choose...", key="p1_sub_sel")
             else:
                 p1_sub = st.selectbox("Your Sub-Faction", [], disabled=True)
-            # p1_wf = st.toggle("Went First?*", key="p1_wf_key", on_change=handle_wf_toggle, args=("p1",))
 
         elif system_name == "Warhammer 40,000 (11th)":
         
@@ -719,12 +729,13 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                     "p2_sub_1_label": st.session_state.get("p2_sub_sel_1") or "None Chosen",
                     "p2_sub_2_label": st.session_state.get("p2_sub_sel_2") or "None",
                     "p2_sub_3_label": st.session_state.get("p2_sub_sel_3") or "None"
+
+                    "sel_event_id": 
                 }
 
                 # Switch the page context path and rerun execution
                 st.session_state.page = "Log_Games_Score"
                 st.rerun()
-
 
 def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id, club_id, system_short_name):
     if st.session_state.page == page:
@@ -1315,11 +1326,11 @@ else:
             collapse_sidebar()
             time.sleep(0.1)
             st.rerun()
-        if st.sidebar.button("Log Games (Functions)"):
-            st.session_state.page = "Log_Games_Functions"
-            collapse_sidebar()
-            time.sleep(0.1)
-            st.rerun()
+        # if st.sidebar.button("Log Games (Functions)"):
+        #     st.session_state.page = "Log_Games_Functions"
+        #     collapse_sidebar()
+        #     time.sleep(0.1)
+        #     st.rerun()
 
     if st.session_state.get("user_role") in ("system_admin", "event_admin"):
         if st.sidebar.button("Event Manager"):
@@ -1332,43 +1343,6 @@ else:
     if st.session_state.page == "Log_Games_Functions":
         st.header("Log Your Club Matches Here")
         st.divider()
-
-        try:
-            system_data = supabase.table("game_systems").select("*").execute()
-            df_system_data = pd.DataFrame(system_data.data)
-        except Exception as e:
-            st.error(f"Error fetching data: {e}")
-            df_system_data = pd.DataFrame()
-
-        selected_name = st.selectbox(
-            "Please select a game system:", 
-            df_system_data['name'].unique() if not df_system_data.empty else [], 
-            index=None, 
-            placeholder="Choose...", 
-            key="system_select" 
-        )
-
-        if selected_name:
-            matched_row = df_system_data[df_system_data['name'] == selected_name].iloc[0]
-
-            # Save everything to session_state so the scoring page can read it later
-            st.session_state.system_page = 'Log_Games_Functions'
-            st.session_state.system_id = matched_row['id']
-            st.session_state.system_name = matched_row['name']
-            st.session_state.system_is_active = matched_row['is_active']
-            st.session_state.system_short_name = matched_row['short_name']
-            st.session_state.system_edition = matched_row['edition']
-            st.session_state.club_id = 'e0435ab2-d5e4-438f-8442-90cc27365cb5'
-            
-            # Pass the persistent session state values to your function
-            log_game_details(
-                st.session_state.system_page, 
-                st.session_state.system_name, 
-                st.session_state.system_id, 
-                st.session_state.system_short_name, 
-                None, None, None, 
-                st.session_state.club_id
-            )
         
     if st.session_state.page == "Log_Games_Score_Functions":
         st.header("Log the Scores for your Match Here")
@@ -1653,9 +1627,71 @@ else:
         st.caption("King of the Hill — Casual 3-Month Matched Play Campaign")
         st.divider()
         
-        # System ID for 11th Edition 40K system row
-        SYSTEM_11TH_ID = 'ccc3b65d-a53c-4528-9b6e-d0313e71c790'
+        # # System ID for 11th Edition 40K system row
+        # SYSTEM_11TH_ID = 'ccc3b65d-a53c-4528-9b6e-d0313e71c790'
 
+        # STEP 1 - Select running Event.
+        # # This will then obtain the event, system and club information.
+        st.subheader("Please Select a Ladder Event from the list below")
+        try:
+            event_details = supabase.table("event_details").select("*").execute()
+            df_event_details = pd.DataFrame(event_details.data)
+        except Exception as e:
+            st.error(f"Error fetching data: {e}")
+            df_event_details = pd.DataFrame()
+
+        selected_event = st.selectbox(
+            "Please event a game system:", 
+            df_event_details['ev_name'].unique() if not df_event_details.empty else [], 
+            index=None, 
+            placeholder="Choose...", 
+            key="event_select" 
+        )
+
+        if selected_event:
+            matched_row = df_event_details[df_event_details['ev_name'] == selected_event].iloc[0]
+
+            # Save everything to session_state so the scoring page can read it later
+            st.session_state.system_page = 'BGC_Ladder'
+
+            st.session_state.ev_id = matched_row['ev_id']
+            st.session_state.ev_name = matched_row['ev_name']
+            st.session_state.ev_type = matched_row['ev_type']
+            st.session_state.ev_status = matched_row['ev_status']
+            st.session_state.ev_start = matched_row['ev_start']
+            st.session_state.ev_end = matched_row['ev_end']
+            st.session_state.ev_min = matched_row['ev_min']
+            st.session_state.ev_max = matched_row['ev_max']
+            st.session_state.ev_rounds = matched_row['ev_rounds']
+            st.session_state.ev_created_by = matched_row['ev_created_by']
+            st.session_state.ev_gs_id = matched_row['ev_gs_id']
+            st.session_state.ev_club_id = matched_row['ev_club_id']
+            st.session_state.ev_size = matched_row['ev_size']
+            st.session_state.gs_id = matched_row['gs_id']
+            st.session_state.gs_name = matched_row['gs_name']
+            st.session_state.gs_active = matched_row['gs_active']
+            st.session_state.gs_short = matched_row['gs_short']
+            st.session_state.gs_ed = matched_row['gs_ed']
+            st.session_state.cl_id = 'e0435ab2-d5e4-438f-8442-90cc27365cb5'
+            # st.session_state.cl_id = matched_row['cl_id']
+            st.session_state.cl_name = matched_row['cl_name']
+            st.session_state.cl_locat = matched_row['cl_locat']
+            st.session_state.cl_slug = matched_row['cl_slug']
+            st.session_state.cl_owner_id = matched_row['cl_owner_id']
+
+
+            # Pass the persistent session state values to your function
+            log_game_details(
+                st.session_state.system_page, 
+                st.session_state.gs_name, 
+                st.session_state.gs_id, 
+                st.session_state.gs_short, 
+                st.session_state.ev_id,
+                None, # No Round ID
+                None, # No Mission ID
+                st.session_state.club_id
+            )
+                
         # -------------------------------------------------------------
         # 1. FETCH ACTIVE LADDER EVENT CONTEXT
         # -------------------------------------------------------------
@@ -1704,7 +1740,7 @@ else:
                 
                 with col_ranked:
                     st.markdown("### 🏆 The Established Ladder")
-                    ranked_df = parts_df[parts_df["current_rank"].notna()].sort_values("current_rank")
+                    ranked_df = parts_df[parts_df["current_rank"].notna()].sort_value s("current_rank")
                     
                     if ranked_df.empty:
                         st.caption("No matches have been played yet. Everyone is currently in the entry pool!")
