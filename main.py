@@ -183,6 +183,16 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
             
         st.subheader("Game Details")
 
+        # 🎯 FIX: Initialize system tracking variables at baseline scope level
+        # This completely prevents UnboundLocalErrors in non-11th Edition game modes!
+        p1_fac_id = None
+        p2_fac_id = None
+        
+        # If your script also checks p1_sub_1_label etc. across modes, default them here too:
+        p1_sub_1, p1_sub_2, p1_sub_3 = None, None, None
+        p2_sub_1, p2_sub_2, p2_sub_3 = None, None, None
+
+
         if event_id is None:
             # Game Size
             if system_name in ('Warhammer 40,000', 'Warhammer 40,000 (11th)'):
