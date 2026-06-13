@@ -808,6 +808,9 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
             p2_kills = 0
             p2_kill_grade = 0
 
+            p1_secondary_type = None
+            p2_secondary_type = None
+
             if system_name == "Kill Team":
                 # The lookup table based on your image
                 # Format: {starting_count: [Grade 1 threshold, Grade 2, Grade 3, Grade 4, Grade 5]}
