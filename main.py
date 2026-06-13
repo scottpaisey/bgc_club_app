@@ -1550,7 +1550,7 @@ else:
         # Verify that a game system was actually selected on the previous page
         if "system_id" in st.session_state and st.session_state.system_id is not None:
             log_game_scores(
-                "Log_Games_Score_Functions", 
+                "Log_Games_Score", 
                 st.session_state.system_name, 
                 st.session_state.system_id, 
                 None, None, None, 
