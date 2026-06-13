@@ -1194,10 +1194,10 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                         meta = st.session_state.user.user_metadata
                         p1_discord_id = meta.get("provider_id") or meta.get("sub")
 
-                    # 🎯 FIX: Extract player names and fallback parameters directly from your game_data object!
+                    # 🎯 FIX: Pull player names directly from your secure game_data object!
                     game_setup_data = st.session_state.get("game_data", {})
-                    p1_display_name = game_setup_data.get("p1_name", user_name)
-                    p2_display_name = game_setup_data.get("p2_name", "Opponent")
+                    p1_display_name = game_setup_data.get("p1_name", "Player 1")
+                    p2_display_name = game_setup_data.get("p2_name", "Player 2")
                     
                     # Look for Player 2's Discord ID if you store it in game_data, otherwise default to None
                     p2_discord_id = game_setup_data.get("p2_discord_id") or game_setup_data.get("p2_sub")
@@ -1220,6 +1220,7 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                     st.session_state.selected_system = system_short_name
                     st.session_state.page = None
                     st.rerun()
+
 
                 except Exception as e:
                     st.error(f"❌ Database error: Could not log game outputs. {e}")
