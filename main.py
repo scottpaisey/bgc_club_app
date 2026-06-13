@@ -754,12 +754,14 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
 
             # --- INITIALISE REGIONAL SCORING SYSTEM METRICS ---
             p1_pri = 0
+            p1_secondary_max_score = 0
             p1_sec = 0
             p1_br = 0
             p1_kills = 0
             p1_kill_grade = 0
     
             p2_pri = 0
+            p2_secondary_max_score = 0
             p2_sec = 0
             p2_br = 0
             p2_kills = 0
@@ -817,7 +819,7 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                         p1_pri = st.number_input("Primary Score*", 0, 45, key="p1_p")
                         if p1_secondary_type == 'Fixed':
                             p1_sec = st.number_input("Secondary Score*", 0, 40, key="p1_s")
-                        else:
+                        if p1_secondary_type == 'Tactical':
                             p1_sec = st.number_input("Secondary Score*", 0, 45, key="p1_s")
                         if st.toggle("Battle Ready?*", key="p1_br"):
                             p1_br = 10
@@ -861,10 +863,9 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                         p2_secondary_type = st.selectbox('Secondary Type*', ['Fixed', 'Tactical'], index=None,
                          placeholder="Choose...", key="p2_secondary_type")
                         p2_pri = st.number_input("Primary Score*", 0, 45, key="p2_p")
-                        p2_secondary_max_score = 0
                         if p2_secondary_type == 'Fixed':
                             p2_secondary_max_score = 40
-                        else:
+                        elif p2_secondary_type == 'Tactical':
                             p2_secondary_max_score = 45
                         p2_sec = st.number_input("Secondary Score*", 0, p2_secondary_max_score, key="p2_s")
                         if st.toggle("Battle Ready?*", key="p2_br"):
