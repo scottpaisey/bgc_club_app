@@ -1186,9 +1186,42 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                             
                             if match_detachments_p2_payload:
                                 supabase.table("match_detachments_11th").insert(match_detachments_p2_payload).execute()
+
+                    # 🎯 EXTRACTION: Safely grab the numerical Discord IDs
+                    # Player 1 (Attacker) ID from active session metadata
+                    p1_discord_id = None
+                    if "user" in st.session_state and hasattr(st.session_state.user, "user_metadata"):
+                        meta = st.session_state.user.user_metadata
+                        p1_discord_id = meta.get("provider_id") or meta.get("sub")
+
+                    # Player 2 (Defender) ID from your database table row
+                    # (Assumes you are saving 'defender_discord_id' or 'discord_id' in your players/defender lookup view)
+                    p2_discord_id = defender_row.get("discord_id") or defender_row.get("provider_id")
+
+                    # 🛠️ FORMATTING: Wrap IDs in Discord's ping markup syntax. 
+                    # Fall back to plain bold names if an ID isn't found.
+                    p1_ping = f"<@{p1_discord_id}>" if p1_discord_id else f"**{user_name}**"
+                    p2_ping = f"<@{p2_discord_id}>" if p2_discord_id else f"**{defender_row['player_name']}**"
+
+                    # # SEND TO WEBHOOK: True structural pings will now notify users on your server!
+                    # post_to_discord_webhook(
+                    #     f"⚔️ **Sector Ladder Challenge Settled!**\n"
+                    #     f"{p1_ping} challenged {p2_ping}! Final Score: **{p1_score}** - **{p2_score}**."
+                    # )
+                    
+                    # st.success("🎉 Battle recorded successfully! The Sector Ladder positions have shifted.")
+                    # time.sleep(1.5)
+                    # st.rerun()
                     
                     # 5. Broadcast alerts and wipe processing session state variables
-                    post_to_discord_webhook(f"⚔️ **Match Logged!** {setup['p1_name']} vs {setup['p2_name']}. Result: {p1_total} - {p2_total}")
+                    post_to_discord_webhook(
+                        f"⚔️ **Match Logged!**\n"
+                        f"{p1_ping} challenged {p2_ping}! Final Score: **{p1_score}** - **{p2_score}**."
+                    )
+                    # post_to_discord_webhook(
+                    #     f"⚔️ **Sector Ladder Challenge Settled!**\n"
+                    #     f"{p1_ping} challenged {p2_ping}! Final Score: **{p1_score}** - **{p2_score}**."
+                    # )
                     st.success("Game posted to Supabase!")
 
                     st.session_state.game_data = {}
