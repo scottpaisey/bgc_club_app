@@ -843,6 +843,17 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                         if kills >= threshold:
                             grade = i + 1
                     return grade
+                    
+            # Visual Aid for changing the term for the armies leader between various systems
+            warlord_term = None
+            if system_name in ('Warhammer 40,000 (11th)', 'Warhammer 40,000'):
+                warlord_term = "Warlord"
+            elif system_name in ('Age of Sigmar', 'Middle Earth: Strategy Battle Game'):
+                warlord_term = "General"
+            if system_name in ('Kill Team'):
+                warlord_term = "Leader"
+            if system_name in ('A Song Of Ice And Fire'):
+                warlord_term = "Commander"
 
             with st.form("score_submission_form"):
                 col3, col4 = st.columns(2)
@@ -895,7 +906,7 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                         # p1_kills = st.number_input("Operatives Killed*", 0, p1_max_kills, key="p1_kills")
                         p1_kills = st.number_input("Operatives Killed*", 0, p2_op_count, key="p1_kills")
                     
-                    if st.toggle("Slain Enemy Warlord?*", key="p1_killed_warlord"):
+                    if st.toggle("Slain Enemy " + warlord_term + "*?", key="p1_killed_warlord"):
                         p1_killed_warlord = True
                     else:
                         p1_killed_warlord = False
@@ -949,7 +960,7 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                         
 
 
-                    if st.toggle("Slain Enemy Warlord?*", key="p2_killed_warlord"):
+                    if st.toggle("Slain Enemy " + warlord_term + "*?", key="p2_killed_warlord"):
                         p2_killed_warlord = True
                     else:
                         p2_killed_warlord = False
