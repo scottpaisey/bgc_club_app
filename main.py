@@ -875,9 +875,13 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                         p1_br = 0
 
                     if system_name == 'Kill Team':
+                        try:
+                            p1_max_kills = int(p2_op_count) if p2_op_count is not None else 14
+                        except (ValueError, TypeError):
+                            p1_max_kills = 14
                         p1_pri = st.number_input("Crit Op Score*", 0, 6, key="p1_p")
                         p1_sec = st.number_input("Tac Op Score*", 0, 6, key="p1_s")
-                        p1_kills = st.number_input("Operatives Killed*", 0, p2_op_count, key="p1_kills")
+                        p1_kills = st.number_input("Operatives Killed*", 0, p1_max_kills, key="p1_kills")
 
                     if st.toggle("Slain Enemy Warlord?*", key="p1_killed_warlord"):
                         p1_killed_warlord = True
@@ -922,9 +926,13 @@ def log_game_scores(page, system_name, system_id, event_id, round_id, mission_id
                         p2_br = 0
 
                     if system_name == 'Kill Team':
+                        try:
+                            p2_max_kills = int(p1_op_count) if p21op_count is not None else 14
+                        except (ValueError, TypeError):
+                            p2_max_kills = 14
                         p2_pri = st.number_input("Crit Op Score*", 0, 6, key="p2_p")
                         p2_sec = st.number_input("Tac Op Score*", 0, 6, key="p2_s")
-                        p2_kills = st.number_input("Operatives Killed?*", 0, p1_op_count, key="p2_kills")
+                        p2_kills = st.number_input("Operatives Killed?*", 0, p2_max_kills, key="p2_kills")
 
 
                     if st.toggle("Slain Enemy Warlord?*", key="p2_killed_warlord"):
