@@ -189,6 +189,8 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
         p2_fac = None
         p1_fac_id = None
         p2_fac_id = None
+        p1_op_count = None
+        p2_op_count = None
         
         # If your script also checks p1_sub_1_label etc. across modes, default them here too:
         p1_sub_1, p1_sub_2, p1_sub_3 = None, None, None
