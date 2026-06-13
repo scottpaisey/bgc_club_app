@@ -724,8 +724,8 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                     "game_size": game_size,
 
                     # Kill Team Specific Variables
-                    "p1_op_count": p1_op_count
-                    "p2_op_count": p2_op_count
+                    "p1_op_count": p1_op_count,
+                    "p2_op_count": p2_op_count,
                     
                     # Raw database tracking UUID keys
                     "p1_sub_1": p1_sub_1,
