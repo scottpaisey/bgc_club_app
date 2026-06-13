@@ -728,9 +728,9 @@ def log_game_details(page, system_name, system_id, system_short_name, event_id, 
                     
                     "p2_sub_1_label": st.session_state.get("p2_sub_sel_1") or "None Chosen",
                     "p2_sub_2_label": st.session_state.get("p2_sub_sel_2") or "None",
-                    "p2_sub_3_label": st.session_state.get("p2_sub_sel_3") or "None"
+                    "p2_sub_3_label": st.session_state.get("p2_sub_sel_3") or "None",
 
-                    "sel_event_id": 
+                    "sel_event_id": event_id
                 }
 
                 # Switch the page context path and rerun execution
