@@ -1383,26 +1383,26 @@ else:
             st.rerun()        
 
 
-    if st.session_state.page == "Log_Games_Functions":
-        st.header("Log Your Club Matches Here")
-        st.divider()
+    # if st.session_state.page == "Log_Games_Functions":
+    #     st.header("Log Your Club Matches Here")
+    #     st.divider()
         
-    if st.session_state.page == "Log_Games_Score_Functions":
-        st.header("Log the Scores for your Match Here")
-        st.divider()    
+    # if st.session_state.page == "Log_Games_Score_Functions":
+    #     st.header("Log the Scores for your Match Here")
+    #     st.divider()    
         
-        # Verify that a game system was actually selected on the previous page
-        if "system_id" in st.session_state and st.session_state.system_id is not None:
-            log_game_scores(
-                "Log_Games_Score_Functions", 
-                st.session_state.system_name, 
-                st.session_state.system_id, 
-                None, None, None, 
-                st.session_state.club_id, 
-                st.session_state.system_short_name
-            )
-        else:
-            st.warning("Please go back and select a game system first.")
+        # # Verify that a game system was actually selected on the previous page
+        # if "system_id" in st.session_state and st.session_state.system_id is not None:
+        #     log_game_scores(
+        #         "Log_Games_Score_Functions", 
+        #         st.session_state.system_name, 
+        #         st.session_state.system_id, 
+        #         None, None, None, 
+        #         st.session_state.club_id, 
+        #         st.session_state.system_short_name
+        #     )
+        # else:
+        #     st.warning("Please go back and select a game system first.")
 
 
     
@@ -1590,9 +1590,12 @@ else:
             st.error(f"Error fetching data: {e}")
             df_system_data = pd.DataFrame()
 
+        # 🎯 FIX: Wrap the unique array in sorted() to enforce perfect A-Z sorting
+        system_options = sorted(df_system_data['name'].unique()) if not df_system_data.empty else []
+
         selected_name = st.selectbox(
             "Please select a game system:", 
-            df_system_data['name'].unique() if not df_system_data.empty else [], 
+            options=system_options, 
             index=None, 
             placeholder="Choose...", 
             key="system_select" 
