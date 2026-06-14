@@ -1,16 +1,20 @@
 name: 🔄 Keep Streamlit App Awake
 
+# 🎯 FIX: Force GitHub Actions to use Node 24 to suppress the deprecation warning
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   schedule:
-    # 🎯 Cron Schedule: Triggers automatically every 10 hours (00:00 and 10:00 UTC daily)
+    # Cron Schedule: Triggers automatically every 10 hours
     - cron: '0 0,10 * * *'
-  workflow_dispatch: # Allows you to manually click "Run" from GitHub Actions if needed
+  workflow_dispatch: # Allows manual trigger clicks from your GitHub panel
 
 jobs:
   ping-repo:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Grants the runner permission to update your keep_alive text file
+      contents: write
 
     steps:
     - name: 📥 Check out repository code
@@ -25,6 +29,5 @@ jobs:
         git config --global user.name "BGC Club Bot"
         git config --global user.email "bot@bgc-club.internal"
         git add keep_alive.txt
-        # Using [skip ci] prevents the commit from triggering unnecessary redeployment compile loops
         git commit -m "chore: keep-awake heartbeat ping [skip ci]" || exit 0
         git push
